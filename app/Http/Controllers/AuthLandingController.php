@@ -18,7 +18,7 @@ class AuthLandingController extends Controller
         }
 
         // Si NO está logueado -> mostramos login (tu componente de login en Inertia)
-        return Inertia::render('auth/login', [
+        return redirect()->route('login', [
             // props opcionales si tu página las necesita
         ]);
     }
