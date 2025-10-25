@@ -47,7 +47,7 @@ export default function Login({
                 "
             >
                 {/* highlight line arriba */}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
 
                 <Form
                     {...store.form()}
@@ -136,7 +136,7 @@ export default function Login({
                                         id="remember"
                                         name="remember"
                                         tabIndex={3}
-                                        className="mt-[2px] border-white/20 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                                        className="mt-0.5 border-white/20 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
                                     />
                                     <Label
                                         htmlFor="remember"
@@ -152,7 +152,7 @@ export default function Login({
                                     className="
                                         mt-2 h-11 w-full rounded-xl text-[0.9rem] font-medium
                                         shadow-[0_20px_60px_rgba(123,47,255,0.4)]
-                                        bg-gradient-to-r from-violet-500 to-fuchsia-500
+                                        bg-linear-to-r from-violet-500 to-fuchsia-500
                                         text-white
                                         hover:from-violet-400 hover:to-fuchsia-400
                                         focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-black
@@ -177,9 +177,9 @@ export default function Login({
                             {canRegister && (
                                 <div className="pt-4 text-center text-[0.8rem] text-white/40">
                                     <div className="mb-3 flex items-center gap-3 text-[0.7rem] uppercase tracking-wide text-white/30">
-                                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                                        <div className="h-px flex-1 bg-linear-to-r from-transparent via-white/20 to-transparent" />
                                         <span>¿No tienes cuenta?</span>
-                                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                                        <div className="h-px flex-1 bg-linear-to-r from-transparent via-white/20 to-transparent" />
                                     </div>
 
                                     <TextLink

@@ -16,7 +16,7 @@ export default function AuthLayout({
     return (
         <div
             className={`
-                relative flex min-h-[100vh] w-full items-center justify-center px-4 py-10
+                relative flex min-h-screen w-full items-center justify-center px-4 py-10
                 bg-[#050505]
                 bg-[radial-gradient(circle_at_20%_20%,rgba(80,80,255,0.18)_0%,transparent_60%),radial-gradient(circle_at_80%_30%,rgba(255,0,128,0.15)_0%,transparent_60%)]
                 overflow-hidden
@@ -25,7 +25,7 @@ export default function AuthLayout({
         >
             {/* Glow blur central */}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-[240px] w-[240px] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.08)_0%,transparent_70%)] blur-3xl" />
+                <div className="h-60 w-60 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.08)_0%,transparent_70%)] blur-3xl" />
             </div>
 
             {/* Contenido centrado */}
@@ -35,8 +35,8 @@ export default function AuthLayout({
                     href={home()}
                     className="flex flex-col items-center gap-3 font-medium"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md">
-                        <AppLogoIcon className="size-9 fill-current text-white" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md">
+                        <AppLogoIcon className="size-12 fill-current text-white" />
                     </div>
 
                     {/* sr-only por accesibilidad, en caso de que uses screen readers */}
