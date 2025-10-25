@@ -3,10 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\AuthLandingController;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-})->name('home');
+Route::get('/', AuthLandingController::class)->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
