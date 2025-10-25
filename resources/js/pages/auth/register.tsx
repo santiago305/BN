@@ -16,7 +16,7 @@ export default function Register() {
             title="Crea tu cuenta"
             description="Ingresa tus datos para registrarte"
         >
-            <Head title="Register" />
+            <Head title="Registro" />
 
             {/* CARD de registro */}
             <div
@@ -29,7 +29,7 @@ export default function Register() {
                 "
             >
                 {/* línea highlight arriba */}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-linear-to-r from-transparent via-white/40 to-transparent" />
 
                 <Form
                     {...store.form()}
@@ -159,7 +159,7 @@ export default function Register() {
                                     className="
                                         mt-2 h-11 w-full rounded-xl text-[0.9rem] font-medium
                                         shadow-[0_20px_60px_rgba(123,47,255,0.4)]
-                                        bg-gradient-to-r from-violet-500 to-fuchsia-500
+                                        bg-linear-to-r from-violet-500 to-fuchsia-500
                                         text-white
                                         hover:from-violet-400 hover:to-fuchsia-400
                                         focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-black
@@ -183,9 +183,9 @@ export default function Register() {
                             {/* YA TIENES CUENTA */}
                             <div className="pt-4 text-center text-[0.8rem] text-white/40">
                                 <div className="mb-3 flex items-center gap-3 text-[0.7rem] uppercase tracking-wide text-white/30">
-                                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                                    <div className="h-px flex-1 bg-linear-to-r from-transparent via-white/20 to-transparent" />
                                     <span>¿Ya tienes cuenta?</span>
-                                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                                    <div className="h-px flex-1 bg-linear-to-r from-transparent via-white/20 to-transparent" />
                                 </div>
 
                                 <TextLink

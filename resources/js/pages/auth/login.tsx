@@ -27,7 +27,7 @@ export default function Login({
             title="Bienvenido de nuevo"
             description="Ingresa tu correo y contraseña para continuar"
         >
-            <Head title="Log in" />
+            <Head title="Inicio de sesión" />
 
             {/* STATUS MESSAGE (si hay, aparece arriba de la tarjeta) */}
             {status && (
