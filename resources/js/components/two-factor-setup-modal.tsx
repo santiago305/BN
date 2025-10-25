@@ -252,27 +252,27 @@ export default function TwoFactorSetupModal({
     }>(() => {
         if (twoFactorEnabled) {
             return {
-                title: 'Two-Factor Authentication Enabled',
+                title: 'Autenticación de dos factores habilitada',
                 description:
-                    'Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.',
-                buttonText: 'Close',
+                    'La autenticación de dos factores está habilitada. Escanea el código QR o ingresa la clave de configuración en tu aplicación de autenticación.',
+                buttonText: 'Cerrar',
             };
         }
 
         if (showVerificationStep) {
             return {
-                title: 'Verify Authentication Code',
+                title: 'Verificar código de autenticación',
                 description:
-                    'Enter the 6-digit code from your authenticator app',
-                buttonText: 'Continue',
+                    'Ingresa el código de 6 dígitos de tu aplicación de autenticación',
+                buttonText: 'Continuar',
             };
         }
 
         return {
-            title: 'Enable Two-Factor Authentication',
+            title: 'Habilitar autenticación de dos factores',
             description:
-                'To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app',
-            buttonText: 'Continue',
+                'Para finalizar la habilitación de la autenticación de dos factores, escanea el código QR o ingresa la clave de configuración en tu aplicación de autenticación',
+            buttonText: 'Continuar',
         };
     }, [twoFactorEnabled, showVerificationStep]);
 
