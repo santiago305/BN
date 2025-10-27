@@ -1,28 +1,79 @@
 <?php
 
-use App\Http\Middleware\HandleAppearance;
-use App\Http\Middleware\HandleInertiaRequests;
-use Illuminate\Foundation\Application;
-use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+namespace App\Support;
 
-return Application::configure(basePath: dirname(__DIR__))
-    ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
-        health: '/up',
-    )
-    ->withMiddleware(function (Middleware $middleware) {
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use DateTimeInterface;
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Support\Arr;
+use JsonSerializable;
 
-        $middleware->web(append: [
-            HandleAppearance::class,
-            HandleInertiaRequests::class,
-            AddLinkHeadersForPreloadedAssets::class,
-        ]);
-    })
-    ->withExceptions(function (Exceptions $exceptions) {
-        //
-    })->create();
+class WorkerNormalizer
+{
+    /**
+     * Normalize a single worker record into an array with consistent types.
+     */
+    public static function normalize(array|object $worker): array
+    {
+        $payload = self::resolvePayload($worker);
+
+        return [
+            'id' => $payload['id'] ?? null,
+            'name' => $payload['name'] ?? null,
+            'dni' => $payload['dni'] ?? null,
+            'is_in_use' => array_key_exists('is_in_use', $payload) ? (bool) $payload['is_in_use'] : false,
+            'is_active' => array_key_exists('is_active', $payload) ? (bool) $payload['is_active'] : false,
+            'created_at' => self::formatDate(Arr::get($payload, 'created_at')),
+            'updated_at' => self::formatDate(Arr::get($payload, 'updated_at')),
+        ];
+    }
+
+    /**
+     * Normalize a list of workers.
+     */
+    public static function normalizeMany(iterable $workers): array
+    {
+        $normalized = [];
+
+        foreach ($workers as $worker) {
+            $normalized[] = self::normalize($worker);
+        }
+
+        return $normalized;
+    }
+
+    private static function resolvePayload(array|object $worker): array
+    {
+        if (is_array($worker)) {
+            return $worker;
+        }
+
+        if ($worker instanceof Arrayable) {
+            return $worker->toArray();
+        }
+
+        if ($worker instanceof JsonSerializable) {
+            return (array) $worker->jsonSerialize();
+        }
+
+        return (array) $worker;
+    }
+
+    private static function formatDate(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return $value->toISOString();
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            return Carbon::instance($value)->toISOString();
+        }
+
+        return Carbon::parse((string) $value)->toISOString();
+    }
+}
