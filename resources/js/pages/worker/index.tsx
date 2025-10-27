@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 
@@ -58,15 +58,17 @@ export default function WorkerIndexPage({
 
     const [flashMsg, setFlashMsg] = useState<string>('');
 
-    async function refreshList(optionalParams?: {
+    const currentPage = pagination.current_page ?? 1;
+
+    const refreshList = useCallback(async (optionalParams?: {
         is_active?: string;
         is_in_use?: string;
         page?: number;
-    }) {
+    }): Promise<void> => {
         const params = new URLSearchParams();
         const activeFilter = optionalParams?.is_active ?? filterActive;
         const inUseFilter = optionalParams?.is_in_use ?? filterInUse;
-        const page = optionalParams?.page ?? pagination.current_page ?? 1;
+        const page = optionalParams?.page ?? currentPage;
 
         if (activeFilter !== '') {
             params.set('is_active', activeFilter);
@@ -77,20 +79,24 @@ export default function WorkerIndexPage({
 
         params.set('page', page.toString());
 
-        const res = await fetch(`/api/workers?${params.toString()}`);
-        if (!res.ok) {
-            return;
-        }
+        try {
+            const res = await fetch(`/api/workers?${params.toString()}`);
+            if (!res.ok) {
+                return;
+            }
 
-        const data: {
-            data: Worker[];
-            meta: WorkerPageProps['pagination'];
-            stats: WorkerPageProps['stats'];
-        } = await res.json();
-        setWorkers(data.data);
-        setPagination(data.meta);
-        setStats(data.stats);
-    }
+            const data: {
+                data: Worker[];
+                meta: WorkerPageProps['pagination'];
+                stats: WorkerPageProps['stats'];
+            } = await res.json();
+            setWorkers(data.data);
+            setPagination(data.meta);
+            setStats(data.stats);
+        } catch (error) {
+            console.error('No se pudo actualizar la lista de usuarios automáticamente.', error);
+        }
+    }, [filterActive, filterInUse, currentPage]);
 
     function applyFilters() {
         const params: Record<string, string> = {};
@@ -276,6 +282,20 @@ export default function WorkerIndexPage({
             },
         });
     }
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+                return;
+            }
+
+            void refreshList();
+        }, 2000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [refreshList]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

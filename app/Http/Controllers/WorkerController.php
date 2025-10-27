@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Support\WorkerNormalizer;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -375,10 +376,7 @@ class WorkerController extends Controller
             return null;
         }
 
-        $worker->is_in_use = (bool) $worker->is_in_use;
-        $worker->is_active = (bool) $worker->is_active;
-
-        return $worker;
+        return WorkerNormalizer::normalize($worker);
     }
 
     /**
@@ -386,6 +384,6 @@ class WorkerController extends Controller
      */
     private function normalizeWorkers(array $workers): array
     {
-        return array_map(fn ($worker) => $this->normalizeWorker($worker), $workers);
+        return WorkerNormalizer::normalizeMany($workers);
     }
 }
