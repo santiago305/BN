@@ -8,19 +8,9 @@ import { WorkerStatsCards } from '@/components/worker/worker-stats-cards';
 import { WorkerTable } from '@/components/worker/worker-table';
 import { WorkerCreateDialog } from '@/components/worker/worker-create-dialog';
 import { WorkerEditDialog } from '@/components/worker/worker-edit-dialog';
+import { getCsrfHeaders } from '@/lib/csrf';
 import { type BreadcrumbItem } from '@/types';
 import { type Worker, type WorkerPageProps } from '@/types/worker';
-import {
-    activateWorker,
-    createWorker,
-    deactivateWorker,
-    fetchWorkers,
-    updateWorker,
-    updateWorkerInUse,
-    type CreateWorkerPayload,
-    type UpdateWorkerPayload,
-    type WorkerFilters,
-} from '@/services/worker-service';
 
 function isWorkerPageProps(value: unknown): value is WorkerPageProps {
     if (!value || typeof value !== 'object') return false;
@@ -28,6 +18,10 @@ function isWorkerPageProps(value: unknown): value is WorkerPageProps {
     if (!Array.isArray(props.workers)) return false;
     const filters = props.filters;
     if (!filters || typeof filters !== 'object') return false;
+    const pagination = props.pagination;
+    const stats = props.stats;
+    if (!pagination || typeof pagination !== 'object') return false;
+    if (!stats || typeof stats !== 'object') return false;
     return 'is_active' in filters && 'is_in_use' in filters;
 }
 
@@ -38,51 +32,79 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function WorkerIndexPage({
     workers: initialWorkers,
     filters,
+    pagination: initialPagination,
+    stats: initialStats,
 }: WorkerPageProps) {
     const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
+    const [pagination, setPagination] = useState(initialPagination);
+    const [stats, setStats] = useState(initialStats);
 
     const [filterActive, setFilterActive] = useState<string>(filters.is_active ?? '');
     const [filterInUse, setFilterInUse] = useState<string>(filters.is_in_use ?? '');
 
     const [showCreate, setShowCreate] = useState(false);
     const [newName, setNewName] = useState('');
+    const [newDni, setNewDni] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [newIsActive, setNewIsActive] = useState(true);
 
     const [showEdit, setShowEdit] = useState(false);
-    const [editId, setEditId] = useState<number | null>(null);
+    const [editId, setEditId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
+    const [editDni, setEditDni] = useState('');
     const [editPassword, setEditPassword] = useState('');
     const [editIsActive, setEditIsActive] = useState(true);
     const [editIsInUse, setEditIsInUse] = useState(false);
 
     const [flashMsg, setFlashMsg] = useState<string>('');
 
-    async function refreshList(optionalParams?: WorkerFilters) {
-        const filtersToUse = optionalParams ?? {
-            is_active: filterActive,
-            is_in_use: filterInUse,
-        };
+    async function refreshList(optionalParams?: {
+        is_active?: string;
+        is_in_use?: string;
+        page?: number;
+    }) {
+        const params = new URLSearchParams();
+        const activeFilter = optionalParams?.is_active ?? filterActive;
+        const inUseFilter = optionalParams?.is_in_use ?? filterInUse;
+        const page = optionalParams?.page ?? pagination.current_page ?? 1;
 
-        try {
-            const data = await fetchWorkers(filtersToUse);
-            setWorkers(data);
-        } catch (error) {
-            console.error('Failed to refresh workers', error);
-            setFlashMsg('Error al cargar usuarios');
+        if (activeFilter !== '') {
+            params.set('is_active', activeFilter);
         }
+        if (inUseFilter !== '') {
+            params.set('is_in_use', inUseFilter);
+        }
+
+        params.set('page', page.toString());
+
+        const res = await fetch(`/api/workers?${params.toString()}`);
+        if (!res.ok) {
+            return;
+        }
+
+        const data: {
+            data: Worker[];
+            meta: WorkerPageProps['pagination'];
+            stats: WorkerPageProps['stats'];
+        } = await res.json();
+        setWorkers(data.data);
+        setPagination(data.meta);
+        setStats(data.stats);
     }
 
     function applyFilters() {
         const params: Record<string, string> = {};
         if (filterActive !== '') params.is_active = filterActive;
         if (filterInUse !== '') params.is_in_use = filterInUse;
+        params.page = '1';
 
         router.get('/workers', params, {
             preserveState: true,
             onSuccess: (page) => {
                 if (isWorkerPageProps(page.props)) {
                     setWorkers(page.props.workers);
+                    setPagination(page.props.pagination);
+                    setStats(page.props.stats);
                 }
             },
         });
@@ -91,17 +113,21 @@ export default function WorkerIndexPage({
     async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const body: CreateWorkerPayload = {
+        const body = {
             name: newName,
+            dni: newDni,
             password: newPassword,
             is_in_use: false,
             is_active: newIsActive,
         };
 
-        try {
-            await createWorker(body);
-        } catch (error) {
-            console.error('Failed to create worker', error);
+        const res = await fetch('/api/workers', {
+            method: 'POST',
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
             setFlashMsg('Error al crear usuario');
             return;
         }
@@ -109,30 +135,34 @@ export default function WorkerIndexPage({
         setFlashMsg('Usuario creado');
         setShowCreate(false);
         setNewName('');
+        setNewDni('');
         setNewPassword('');
         setNewIsActive(true);
 
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
+            page: pagination.current_page,
         });
     }
 
     function openEditModal(worker: Worker) {
         setEditId(worker.id);
         setEditName(worker.name);
+        setEditDni(worker.dni);
         setEditPassword('');
         setEditIsActive(worker.is_active);
         setEditIsInUse(worker.is_in_use);
         setShowEdit(true);
     }
 
-     async function handleEdit(event: React.FormEvent<HTMLFormElement>) {
+    async function handleEdit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (editId == null) return;
 
-        const body: UpdateWorkerPayload = {
+        const body: Record<string, unknown> = {
             name: editName,
+            dni: editDni,
             is_active: editIsActive,
             is_in_use: editIsInUse,
         };
@@ -141,10 +171,13 @@ export default function WorkerIndexPage({
             body.password = editPassword;
         }
 
-        try {
-            await updateWorker(editId, body);
-        } catch (error) {
-            console.error('Failed to update worker', error);
+        const res = await fetch(`/api/workers/${editId}`, {
+            method: 'PATCH',
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
             setFlashMsg('Error al actualizar');
             return;
         }
@@ -155,14 +188,17 @@ export default function WorkerIndexPage({
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
+            page: pagination.current_page,
         });
     }
 
-    async function handleDeactivate(id: number) {
-        try {
-            await deactivateWorker(id);
-        } catch (error) {
-            console.error('Failed to deactivate worker', error);
+    async function handleDeactivate(id: string) {
+        const res = await fetch(`/api/workers/${id}`, {
+            method: 'DELETE',
+            headers: getCsrfHeaders(),
+        });
+
+        if (!res.ok) {
             setFlashMsg('No se pudo desactivar');
             return;
         }
@@ -171,14 +207,18 @@ export default function WorkerIndexPage({
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
+            page: pagination.current_page,
         });
     }
 
-    async function handleActivate(id: number) {
-        try {
-            await activateWorker(id);
-        } catch (error) {
-            console.error('Failed to activate worker', error);
+    async function handleActivate(id: string) {
+        const res = await fetch(`/api/workers/${id}`, {
+            method: 'PATCH',
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ is_active: true }),
+        });
+
+        if (!res.ok) {
             setFlashMsg('No se pudo activar');
             return;
         }
@@ -187,6 +227,7 @@ export default function WorkerIndexPage({
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
+            page: pagination.current_page,
         });
     }
 
@@ -196,10 +237,13 @@ export default function WorkerIndexPage({
             return;
         }
 
-        try {
-            await updateWorkerInUse(worker.id, !worker.is_in_use);
-        } catch (error) {
-            console.error('Failed to toggle in use status', error);
+        const res = await fetch(`/api/workers/${worker.id}/in-use`, {
+            method: 'PATCH',
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ is_in_use: !worker.is_in_use }),
+        });
+
+        if (!res.ok) {
             setFlashMsg('Error al actualizar estado de uso');
             return;
         }
@@ -208,12 +252,30 @@ export default function WorkerIndexPage({
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
+            page: pagination.current_page,
         });
     }
 
-    const total = workers.length;
-    const activeCount = workers.filter((worker) => worker.is_active).length;
-    const inUseCount = workers.filter((worker) => worker.is_in_use).length;
+    function handlePageChange(page: number) {
+        const nextPage = Math.max(1, Math.min(page, pagination.last_page));
+        if (nextPage === pagination.current_page) return;
+
+        const params: Record<string, string> = {};
+        if (filterActive !== '') params.is_active = filterActive;
+        if (filterInUse !== '') params.is_in_use = filterInUse;
+        params.page = nextPage.toString();
+
+        router.get('/workers', params, {
+            preserveState: true,
+            onSuccess: (pageData) => {
+                if (isWorkerPageProps(pageData.props)) {
+                    setWorkers(pageData.props.workers);
+                    setPagination(pageData.props.pagination);
+                    setStats(pageData.props.stats);
+                }
+            },
+        });
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -239,7 +301,7 @@ export default function WorkerIndexPage({
             </div>
 
             <div className="flex flex-1 flex-col gap-6 p-4">
-                <WorkerStatsCards total={total} active={activeCount} inUse={inUseCount} />
+                <WorkerStatsCards total={stats.total} active={stats.active} inUse={stats.inUse} />
 
                 <WorkerFilterControls
                     filterActive={filterActive}
@@ -251,21 +313,25 @@ export default function WorkerIndexPage({
 
                 <WorkerTable
                     workers={workers}
+                    pagination={pagination}
                     flashMessage={flashMsg}
                     onFlashClear={() => setFlashMsg('')}
                     onToggleInUse={toggleInUse}
                     onEdit={openEditModal}
                     onDeactivate={handleDeactivate}
                     onActivate={handleActivate}
+                    onPageChange={handlePageChange}
                 />
             </div>
 
             <WorkerCreateDialog
                 open={showCreate}
                 name={newName}
+                dni={newDni}
                 password={newPassword}
                 isActive={newIsActive}
                 onNameChange={(value) => setNewName(value)}
+                onDniChange={(value) => setNewDni(value)}
                 onPasswordChange={(value) => setNewPassword(value)}
                 onIsActiveChange={(value) => setNewIsActive(value)}
                 onClose={() => setShowCreate(false)}
@@ -275,10 +341,12 @@ export default function WorkerIndexPage({
             <WorkerEditDialog
                 open={showEdit}
                 name={editName}
+                dni={editDni}
                 password={editPassword}
                 isActive={editIsActive}
                 isInUse={editIsInUse}
                 onNameChange={(value) => setEditName(value)}
+                onDniChange={(value) => setEditDni(value)}
                 onPasswordChange={(value) => setEditPassword(value)}
                 onIsActiveChange={(value) => {
                     setEditIsActive(value);

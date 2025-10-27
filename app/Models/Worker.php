@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Worker extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
 
     // Nombre de la tabla en BD
     protected $table = 'workers';
@@ -15,6 +20,7 @@ class Worker extends Model
     // Campos que se pueden llenar por asignación masiva (create, update)
     protected $fillable = [
         'name',
+        'dni',
         'password',
         'is_in_use',
         'is_active',

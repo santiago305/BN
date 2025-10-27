@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -19,31 +21,12 @@ class WorkerController extends Controller
      */
     public function indexPage(Request $request)
     {
-        // Construimos las mismas condiciones que el index API para que la tabla pueda venir filtrada
-        $conditions = [];
-        $params = [];
-
-        if ($request->has('is_active') && $request->input('is_active') !== '') {
-            $conditions[] = 'is_active = ?';
-            $params[] = $request->boolean('is_active');
-        }
-
-        if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
-            $conditions[] = 'is_in_use = ?';
-            $params[] = $request->boolean('is_in_use');
-        }
-
-        $sql = 'SELECT id, name, is_in_use, is_active, created_at, updated_at FROM workers';
-        if (count($conditions) > 0) {
-            $sql .= ' WHERE ' . implode(' AND ', $conditions);
-        }
-        $sql .= ' ORDER BY id ASC';
-
-        $workers = DB::select($sql, $params);
-        $workers = $this->normalizeWorkers($workers);
+        $listing = $this->getWorkerListing($request);
 
         return Inertia::render('worker/index', [
-            'workers' => $workers,
+            'workers' => $listing['workers'],
+            'pagination' => $listing['meta'],
+            'stats' => $listing['stats'],
             'filters' => [
                 'is_active' => $request->input('is_active', null),
                 'is_in_use' => $request->input('is_in_use', null),
@@ -62,28 +45,13 @@ class WorkerController extends Controller
      */
     public function index(Request $request)
     {
-        $conditions = [];
-        $params = [];
+        $listing = $this->getWorkerListing($request);
 
-        if ($request->has('is_active') && $request->input('is_active') !== '') {
-            $conditions[] = 'is_active = ?';
-            $params[] = $request->boolean('is_active');
-        }
-
-        if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
-            $conditions[] = 'is_in_use = ?';
-            $params[] = $request->boolean('is_in_use');
-        }
-
-        $sql = 'SELECT id, name, is_in_use, is_active, created_at, updated_at FROM workers';
-        if (count($conditions) > 0) {
-            $sql .= ' WHERE ' . implode(' AND ', $conditions);
-        }
-        $sql .= ' ORDER BY id ASC';
-
-        $workers = DB::select($sql, $params);
-
-        return response()->json($this->normalizeWorkers($workers));
+        return response()->json([
+            'data' => $listing['workers'],
+            'meta' => $listing['meta'],
+            'stats' => $listing['stats'],
+        ]);
     }
 
     /**
@@ -93,20 +61,17 @@ class WorkerController extends Controller
      */
     public function show($id)
     {
-        $worker = DB::select(
-            'SELECT id, name, is_in_use, is_active, created_at, updated_at
-             FROM workers
-             WHERE id = ?
-             LIMIT 1',
-            [$id]
-        );
+        $worker = DB::table('workers')
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
+            ->where('id', $id)
+            ->first();
 
-        if (count($worker) === 0) {
+        if ($worker === null) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        return response()->json($this->normalizeWorker($worker[0]));
-        }
+        return response()->json($this->normalizeWorker($worker));
+    }
 
     /**
      * store (API)
@@ -125,44 +90,35 @@ class WorkerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:workers,name',
+            'dni' => 'required|string|max:20|unique:workers,dni',
             'password' => 'required|string|min:4',
             'is_in_use' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
         ]);
 
-        $name = $request->input('name');
-        $hashedPassword = Hash::make($request->input('password'));
-        $isInUse = $request->boolean('is_in_use', false);
-        $isActive = $request->boolean('is_active', true);
         $now = Carbon::now();
+        $id = (string) Str::uuid();
 
-        DB::insert(
-            'INSERT INTO workers (name, password, is_in_use, is_active, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?)',
-            [
-                $name,
-                $hashedPassword,
-                $isInUse,
-                $isActive,
-                $now,
-                $now,
-            ]
-        );
+        DB::table('workers')->insert([
+            'id' => $id,
+            'name' => $request->input('name'),
+            'dni' => $request->input('dni'),
+            'password' => Hash::make($request->input('password')),
+            'is_in_use' => $request->boolean('is_in_use', false),
+            'is_active' => $request->boolean('is_active', true),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
 
-        $id = DB::getPdo()->lastInsertId();
-
-        $created = DB::select(
-            'SELECT id, name, is_in_use, is_active, created_at, updated_at
-             FROM workers
-             WHERE id = ?
-             LIMIT 1',
-            [$id]
-        );
+        $created = DB::table('workers')
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
+            ->where('id', $id)
+            ->first();
 
         return response()->json([
             'message' => 'Worker created successfully',
-            'data' => $this->normalizeWorker($created[0] ?? null),
+            'data' => $this->normalizeWorker($created),
         ], 201);
     }
 
@@ -180,20 +136,34 @@ class WorkerController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'name' => 'sometimes|string|max:255',
+            'name' => [
+                'sometimes',
+                'string',
+                'max:255',
+                Rule::unique('workers', 'name')->ignore($id, 'id'),
+            ],
+            'dni' => [
+                'sometimes',
+                'string',
+                'max:20',
+                Rule::unique('workers', 'dni')->ignore($id, 'id'),
+            ],
             'password' => 'sometimes|string|min:4',
             'is_in_use' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
         ]);
 
-        $worker = DB::select('SELECT id, is_active, is_in_use FROM workers WHERE id = ? LIMIT 1', [$id]);
-        if (count($worker) === 0) {
+        $worker = DB::table('workers')
+            ->select('id', 'is_active', 'is_in_use')
+            ->where('id', $id)
+            ->first();
+
+        if ($worker === null) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        $current = $worker[0];
-        $currentIsActive = (bool) ($current->is_active ?? false);
-        $currentIsInUse = (bool) ($current->is_in_use ?? false);
+        $currentIsActive = (bool) ($worker->is_active ?? false);
+        $currentIsInUse = (bool) ($worker->is_in_use ?? false);
 
         $newIsActive = $request->has('is_active')
             ? $request->boolean('is_active')
@@ -208,53 +178,45 @@ class WorkerController extends Controller
         }
 
         $fields = [];
-        $params = [];
 
         if ($request->has('name')) {
-            $fields[] = 'name = ?';
-            $params[] = $request->input('name');
+            $fields['name'] = $request->input('name');
+        }
+
+        if ($request->has('dni')) {
+            $fields['dni'] = $request->input('dni');
         }
 
         if ($request->has('password')) {
-            $fields[] = 'password = ?';
-            $params[] = Hash::make($request->input('password'));
+            $fields['password'] = Hash::make($request->input('password'));
         }
 
         if ($request->has('is_in_use') || $newIsInUse !== $currentIsInUse) {
-            $fields[] = 'is_in_use = ?';
-            $params[] = $newIsInUse;
+            $fields['is_in_use'] = $newIsInUse;
         }
 
         if ($request->has('is_active') || $newIsActive !== $currentIsActive) {
-            $fields[] = 'is_active = ?';
-            $params[] = $newIsActive;
+            $fields['is_active'] = $newIsActive;
         }
 
-        // siempre actualizamos updated_at
-        $fields[] = 'updated_at = ?';
-        $params[] = Carbon::now();
-
-        // id para el WHERE
-        $params[] = $id;
-
-        if (count($fields) === 1) { // solo updated_at => nada útil por actualizar
+        if (empty($fields)) {
             return response()->json(['message' => 'No fields to update'], 400);
         }
 
-        $sql = 'UPDATE workers SET ' . implode(', ', $fields) . ' WHERE id = ?';
-        DB::update($sql, $params);
+        $fields['updated_at'] = Carbon::now();
 
-        $updated = DB::select(
-            'SELECT id, name, is_in_use, is_active, created_at, updated_at
-             FROM workers
-             WHERE id = ?
-             LIMIT 1',
-            [$id]
-        );
+        DB::table('workers')
+            ->where('id', $id)
+            ->update($fields);
+
+        $updated = DB::table('workers')
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
+            ->where('id', $id)
+            ->first();
 
         return response()->json([
             'message' => 'Worker updated successfully',
-            'data' => $this->normalizeWorker($updated[0] ?? null),
+            'data' => $this->normalizeWorker($updated),
         ]);
     }
 
@@ -267,29 +229,31 @@ class WorkerController extends Controller
      */
     public function destroy($id)
     {
-        $exists = DB::select('SELECT id FROM workers WHERE id = ? LIMIT 1', [$id]);
-        if (count($exists) === 0) {
+        $exists = DB::table('workers')
+            ->select('id')
+            ->where('id', $id)
+            ->first();
+
+        if ($exists === null) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-         DB::update(
-            'UPDATE workers
-             SET is_active = ?, is_in_use = ?, updated_at = ?
-             WHERE id = ?',
-            [false, false, Carbon::now(), $id]
-        );
+        DB::table('workers')
+            ->where('id', $id)
+            ->update([
+                'is_active' => false,
+                'is_in_use' => false,
+                'updated_at' => Carbon::now(),
+            ]);
 
-        $updated = DB::select(
-            'SELECT id, name, is_in_use, is_active, created_at, updated_at
-             FROM workers
-             WHERE id = ?
-             LIMIT 1',
-            [$id]
-        );
+        $updated = DB::table('workers')
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
+            ->where('id', $id)
+            ->first();
 
         return response()->json([
             'message' => 'Worker deactivated (is_active = 0)',
-            'data' => $this->normalizeWorker($updated[0] ?? null),
+            'data' => $this->normalizeWorker($updated),
         ]);
     }
 
@@ -307,41 +271,99 @@ class WorkerController extends Controller
             'is_in_use' => 'required|boolean',
         ]);
 
-        $worker = DB::select('SELECT id, is_active FROM workers WHERE id = ? LIMIT 1', [$id]);
-        if (count($worker) === 0) {
+        $worker = DB::table('workers')
+            ->select('id', 'is_active')
+            ->where('id', $id)
+            ->first();
+
+        if ($worker === null) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        if ((bool) ($worker[0]->is_active ?? false) === false) {
+        if ((bool) ($worker->is_active ?? false) === false) {
             return response()->json([
                 'message' => 'Worker is inactive and cannot change usage status',
             ], 409);
         }
 
-        DB::update(
-            'UPDATE workers
-             SET is_in_use = ?, updated_at = ?
-             WHERE id = ?',
-            [
-                $request->boolean('is_in_use'),
-                Carbon::now(),
-                $id,
-            ]
-        );
+        DB::table('workers')
+            ->where('id', $id)
+            ->update([
+                'is_in_use' => $request->boolean('is_in_use'),
+                'updated_at' => Carbon::now(),
+            ]);
 
-        $updated = DB::select(
-            'SELECT id, name, is_in_use, is_active, created_at, updated_at
-             FROM workers
-             WHERE id = ?
-             LIMIT 1',
-            [$id]
-        );
+        $updated = DB::table('workers')
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
+            ->where('id', $id)
+            ->first();
 
         return response()->json([
             'message' => 'Worker usage status updated',
-            'data' => $this->normalizeWorker($updated[0] ?? null),
+            'data' => $this->normalizeWorker($updated),
         ]);
 
+    }
+
+    private function getWorkerListing(Request $request): array
+    {
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+
+        $query = $this->filteredWorkersQuery($request);
+
+        $total = (clone $query)->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min($page, $lastPage);
+        $offset = ($page - 1) * $perPage;
+
+        $workers = (clone $query)
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
+            ->orderBy('name')
+            ->offset($offset)
+            ->limit($perPage)
+            ->get()
+            ->map(fn ($worker) => $this->normalizeWorker($worker))
+            ->values()
+            ->all();
+
+        $statsRow = (clone $query)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active')
+            ->selectRaw('SUM(CASE WHEN is_in_use = 1 THEN 1 ELSE 0 END) as in_use')
+            ->first();
+
+        $stats = [
+            'total' => (int) ($statsRow->total ?? 0),
+            'active' => (int) ($statsRow->active ?? 0),
+            'inUse' => (int) ($statsRow->in_use ?? 0),
+        ];
+
+        return [
+            'workers' => $workers,
+            'meta' => [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => $lastPage,
+            ],
+            'stats' => $stats,
+        ];
+    }
+
+    private function filteredWorkersQuery(Request $request)
+    {
+        $query = DB::table('workers');
+
+        if ($request->has('is_active') && $request->input('is_active') !== '') {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
+            $query->where('is_in_use', $request->boolean('is_in_use'));
+        }
+
+        return $query;
     }
 
     /**

@@ -1,8 +1,9 @@
 import type { FormEvent } from 'react';
 
 export type Worker = {
-    id: number;
+    id: string;
     name: string;
+    dni: string;
     is_in_use: boolean;
     is_active: boolean;
     created_at: string;
@@ -14,17 +15,34 @@ export type WorkerFilters = {
     is_in_use: string | null;
 };
 
+export type PaginationMeta = {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+};
+
+export type WorkerStats = {
+    total: number;
+    active: number;
+    inUse: number;
+};
+
 export type WorkerPageProps = {
     workers: Worker[];
     filters: WorkerFilters;
+    pagination: PaginationMeta;
+    stats: WorkerStats;
 };
 
 export type WorkerCreateDialogProps = {
     open: boolean;
     name: string;
+    dni: string;
     password: string;
     isActive: boolean;
     onNameChange: (value: string) => void;
+    onDniChange: (value: string) => void;
     onPasswordChange: (value: string) => void;
     onIsActiveChange: (value: boolean) => void;
     onClose: () => void;
@@ -34,10 +52,12 @@ export type WorkerCreateDialogProps = {
 export type WorkerEditDialogProps = {
     open: boolean;
     name: string;
+    dni: string;
     password: string;
     isActive: boolean;
     isInUse: boolean;
     onNameChange: (value: string) => void;
+    onDniChange: (value: string) => void;
     onPasswordChange: (value: string) => void;
     onIsActiveChange: (value: boolean) => void;
     onIsInUseChange: (value: boolean) => void;
@@ -55,12 +75,14 @@ export type WorkerFilterControlsProps = {
 
 export type WorkerTableProps = {
     workers: Worker[];
+    pagination: PaginationMeta;
     flashMessage?: string;
     onFlashClear?: () => void;
     onToggleInUse: (worker: Worker) => void | Promise<void>;
     onEdit: (worker: Worker) => void;
-    onDeactivate: (id: number) => void | Promise<void>;
-    onActivate: (id: number) => void | Promise<void>;
+    onDeactivate: (id: string) => void | Promise<void>;
+    onActivate: (id: string) => void | Promise<void>;
+    onPageChange: (page: number) => void;
 };
 
 export type WorkerStatsCardsProps = {

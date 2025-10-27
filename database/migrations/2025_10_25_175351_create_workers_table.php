@@ -12,10 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('workers', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
 
             // Nombre del usuario que usa la automatización (login / identificador)
-            $table->string('name');
+            $table->string('name')->unique();
+
+            // Documento Nacional de Identidad
+            $table->string('dni')->unique();
 
             // Password del usuario (SIEMPRE guardado en hash, nunca en texto plano)
             $table->string('password');

@@ -5,10 +5,12 @@ import type { WorkerEditDialogProps } from '@/types/worker';
 export function WorkerEditDialog({
     open,
     name,
+    dni,
     password,
     isActive,
     isInUse,
     onNameChange,
+    onDniChange,
     onPasswordChange,
     onIsActiveChange,
     onIsInUseChange,
@@ -57,6 +59,17 @@ export function WorkerEditDialog({
                             className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                             value={name}
                             onChange={(event) => onNameChange(event.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <label className="font-medium text-neutral-700 dark:text-neutral-200">DNI</label>
+                        <input
+                            className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            value={dni}
+                            onChange={(event) => onDniChange(event.target.value)}
+                            maxLength={20}
                             required
                         />
                     </div>
