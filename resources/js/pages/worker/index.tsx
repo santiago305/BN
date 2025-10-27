@@ -200,7 +200,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
 
         const res = await fetch(`/api/workers/${editId}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(body),
         });
 
@@ -222,6 +222,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
     async function handleDeactivate(id: number) {
         const res = await fetch(`/api/workers/${id}`, {
             method: 'DELETE',
+            headers: getCsrfHeaders(),
         });
 
         if (!res.ok) {
@@ -240,7 +241,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
     async function toggleInUse(w: Worker) {
         const res = await fetch(`/api/workers/${w.id}/in-use`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 is_in_use: !w.is_in_use,
             }),
