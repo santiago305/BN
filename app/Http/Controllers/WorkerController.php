@@ -25,12 +25,12 @@ class WorkerController extends Controller
 
         if ($request->has('is_active') && $request->input('is_active') !== '') {
             $conditions[] = 'is_active = ?';
-            $params[] = $request->boolean('is_active') ? 1 : 0;
+            $params[] = $request->boolean('is_active');
         }
 
         if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
             $conditions[] = 'is_in_use = ?';
-            $params[] = $request->boolean('is_in_use') ? 1 : 0;
+            $params[] = $request->boolean('is_in_use');
         }
 
         $sql = 'SELECT id, name, is_in_use, is_active, created_at, updated_at FROM workers';
@@ -40,6 +40,7 @@ class WorkerController extends Controller
         $sql .= ' ORDER BY id ASC';
 
         $workers = DB::select($sql, $params);
+        $workers = $this->normalizeWorkers($workers);
 
         return Inertia::render('worker/index', [
             'workers' => $workers,
@@ -66,12 +67,12 @@ class WorkerController extends Controller
 
         if ($request->has('is_active') && $request->input('is_active') !== '') {
             $conditions[] = 'is_active = ?';
-            $params[] = $request->boolean('is_active') ? 1 : 0;
+            $params[] = $request->boolean('is_active');
         }
 
         if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
             $conditions[] = 'is_in_use = ?';
-            $params[] = $request->boolean('is_in_use') ? 1 : 0;
+            $params[] = $request->boolean('is_in_use');
         }
 
         $sql = 'SELECT id, name, is_in_use, is_active, created_at, updated_at FROM workers';
@@ -82,7 +83,7 @@ class WorkerController extends Controller
 
         $workers = DB::select($sql, $params);
 
-        return response()->json($workers);
+        return response()->json($this->normalizeWorkers($workers));
     }
 
     /**
@@ -104,8 +105,8 @@ class WorkerController extends Controller
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        return response()->json($worker[0]);
-    }
+        return response()->json($this->normalizeWorker($worker[0]));
+        }
 
     /**
      * store (API)
@@ -132,8 +133,8 @@ class WorkerController extends Controller
 
         $name = $request->input('name');
         $hashedPassword = Hash::make($request->input('password'));
-        $isInUse = $request->boolean('is_in_use', false) ? 1 : 0;
-        $isActive = $request->boolean('is_active', true) ? 1 : 0;
+        $isInUse = $request->boolean('is_in_use', false);
+        $isActive = $request->boolean('is_active', true);
         $now = Carbon::now();
 
         DB::insert(
@@ -161,7 +162,7 @@ class WorkerController extends Controller
 
         return response()->json([
             'message' => 'Worker created successfully',
-            'data' => $created[0] ?? null,
+            'data' => $this->normalizeWorker($created[0] ?? null),
         ], 201);
     }
 
@@ -185,25 +186,25 @@ class WorkerController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
-         $worker = DB::select('SELECT id, is_active, is_in_use FROM workers WHERE id = ? LIMIT 1', [$id]);
+        $worker = DB::select('SELECT id, is_active, is_in_use FROM workers WHERE id = ? LIMIT 1', [$id]);
         if (count($worker) === 0) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
         $current = $worker[0];
-        $currentIsActive = (int) ($current->is_active ?? 0);
-        $currentIsInUse = (int) ($current->is_in_use ?? 0);
+        $currentIsActive = (bool) ($current->is_active ?? false);
+        $currentIsInUse = (bool) ($current->is_in_use ?? false);
 
         $newIsActive = $request->has('is_active')
-            ? ($request->boolean('is_active') ? 1 : 0)
+            ? $request->boolean('is_active')
             : $currentIsActive;
 
         $newIsInUse = $request->has('is_in_use')
-            ? ($request->boolean('is_in_use') ? 1 : 0)
+            ? $request->boolean('is_in_use')
             : $currentIsInUse;
 
-        if ($newIsActive === 0) {
-            $newIsInUse = 0;
+        if ($newIsActive === false) {
+            $newIsInUse = false;
         }
 
         $fields = [];
@@ -253,7 +254,7 @@ class WorkerController extends Controller
 
         return response()->json([
             'message' => 'Worker updated successfully',
-            'data' => $updated[0] ?? null,
+            'data' => $this->normalizeWorker($updated[0] ?? null),
         ]);
     }
 
@@ -271,11 +272,11 @@ class WorkerController extends Controller
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        DB::update(
+         DB::update(
             'UPDATE workers
-             SET is_active = 0, is_in_use = 0, updated_at = ?
+             SET is_active = ?, is_in_use = ?, updated_at = ?
              WHERE id = ?',
-            [Carbon::now(), $id]
+            [false, false, Carbon::now(), $id]
         );
 
         $updated = DB::select(
@@ -288,7 +289,7 @@ class WorkerController extends Controller
 
         return response()->json([
             'message' => 'Worker deactivated (is_active = 0)',
-            'data' => $updated[0] ?? null,
+            'data' => $this->normalizeWorker($updated[0] ?? null),
         ]);
     }
 
@@ -311,7 +312,7 @@ class WorkerController extends Controller
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        if ((int) ($worker[0]->is_active ?? 0) === 0) {
+        if ((bool) ($worker[0]->is_active ?? false) === false) {
             return response()->json([
                 'message' => 'Worker is inactive and cannot change usage status',
             ], 409);
@@ -322,7 +323,7 @@ class WorkerController extends Controller
              SET is_in_use = ?, updated_at = ?
              WHERE id = ?',
             [
-                $request->boolean('is_in_use') ? 1 : 0,
+                $request->boolean('is_in_use'),
                 Carbon::now(),
                 $id,
             ]
@@ -338,7 +339,31 @@ class WorkerController extends Controller
 
         return response()->json([
             'message' => 'Worker usage status updated',
-            'data' => $updated[0] ?? null,
+            'data' => $this->normalizeWorker($updated[0] ?? null),
         ]);
+
+    }
+
+    /**
+     * Convierte los flags booleanos de un registro individual a bool nativo.
+     */
+    private function normalizeWorker($worker)
+    {
+        if ($worker === null) {
+            return null;
+        }
+
+        $worker->is_in_use = (bool) $worker->is_in_use;
+        $worker->is_active = (bool) $worker->is_active;
+
+        return $worker;
+    }
+
+    /**
+     * Normaliza un arreglo de registros de workers.
+     */
+    private function normalizeWorkers(array $workers): array
+    {
+        return array_map(fn ($worker) => $this->normalizeWorker($worker), $workers);
     }
 }
