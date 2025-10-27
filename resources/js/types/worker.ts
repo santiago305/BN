@@ -59,6 +59,7 @@ export type WorkerTableProps = {
     onToggleInUse: (worker: Worker) => void | Promise<void>;
     onEdit: (worker: Worker) => void;
     onDeactivate: (id: number) => void | Promise<void>;
+    onActivate: (id: number) => void | Promise<void>;
 };
 
 export type WorkerStatsCardsProps = {

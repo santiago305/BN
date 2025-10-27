@@ -174,6 +174,25 @@ export default function WorkerIndexPage({
         });
     }
 
+    async function handleActivate(id: number) {
+        const res = await fetch(`/api/workers/${id}`, {
+            method: 'PATCH',
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ is_active: true }),
+        });
+
+        if (!res.ok) {
+            setFlashMsg('No se pudo activar');
+            return;
+        }
+
+        setFlashMsg('Usuario activado');
+        await refreshList({
+            is_active: filterActive,
+            is_in_use: filterInUse,
+        });
+    }
+
     async function toggleInUse(worker: Worker) {
         if (!worker.is_active) {
             setFlashMsg('El usuario está inactivo y no se puede poner en uso');
@@ -242,6 +261,7 @@ export default function WorkerIndexPage({
                     onToggleInUse={toggleInUse}
                     onEdit={openEditModal}
                     onDeactivate={handleDeactivate}
+                    onActivate={handleActivate}
                 />
             </div>
 

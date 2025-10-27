@@ -27,7 +27,7 @@ export function WorkerCreateDialog({
     return (
         <dialog
             ref={dialogRef}
-            className="w-full max-w-sm rounded-2xl border border-neutral-300 bg-white shadow-2xl backdrop:bg-black/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="w-full max-w-sm rounded-2xl border border-neutral-300 bg-white shadow-2xl backdrop:bg-black/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 m-auto"
             onClose={onClose}
         >
             <form onSubmit={onSubmit} className="flex flex-col">

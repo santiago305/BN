@@ -9,6 +9,7 @@ export function WorkerTable({
     onToggleInUse,
     onEdit,
     onDeactivate,
+    onActivate,
 }: WorkerTableProps) {
     return (
         <section className="relative min-h-[50vh] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
@@ -99,13 +100,23 @@ export function WorkerTable({
                                         Editar
                                     </button>
 
-                                    <button
-                                        onClick={() => onDeactivate(worker.id)}
-                                        className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-red-700"
-                                    >
-                                        <Power className="h-3.5 w-3.5" />
-                                        Desactivar
-                                    </button>
+                                    {worker.is_active ? (
+                                        <button
+                                            onClick={() => onDeactivate(worker.id)}
+                                            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-red-700"
+                                        >
+                                            <Power className="h-3.5 w-3.5" />
+                                            Desactivar
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => onActivate(worker.id)}
+                                            className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-green-700"
+                                        >
+                                            <Power className="h-3.5 w-3.5" />
+                                            Activar
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
