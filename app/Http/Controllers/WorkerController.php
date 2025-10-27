@@ -329,8 +329,8 @@ class WorkerController extends Controller
 
         $statsRow = (clone $query)
             ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active')
-            ->selectRaw('SUM(CASE WHEN is_in_use = 1 THEN 1 ELSE 0 END) as in_use')
+            ->selectRaw('SUM(CASE WHEN is_active THEN 1 ELSE 0 END) as active')
+            ->selectRaw('SUM(CASE WHEN is_in_use THEN 1 ELSE 0 END) as in_use')
             ->first();
 
         $stats = [
