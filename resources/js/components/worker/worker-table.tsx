@@ -1,8 +1,13 @@
++29
+-13
+
 import { Activity, AlertCircle, CheckCircle, Edit3, Power } from 'lucide-react';
+
+import { useEffect } from 'react';
 
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import type { WorkerTableProps } from '@/types/worker';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export function WorkerTable({
     workers,
@@ -13,6 +18,18 @@ export function WorkerTable({
     onDeactivate,
     onActivate,
 }: WorkerTableProps) {
+    useEffect(() => {
+        if (!flashMessage) {
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            onFlashClear?.();
+        }, 2000);
+
+        return () => clearTimeout(timeout);
+    }, [flashMessage, onFlashClear]);
+
     return (
         <section className="relative min-h-[50vh] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
             <div className="absolute inset-0 pointer-events-none">
@@ -121,18 +138,20 @@ export function WorkerTable({
                 </table>
             </div>
 
-            {flashMessage && (
-                <motion.div
-                    className="absolute right-4 z-20 flex items-center gap-2 rounded-xl bg-neutral-900/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur dark:bg-neutral-100/90 dark:text-neutral-900"
-                    initial={{ opacity: 1 }} // Comienza con opacidad 1
-                    animate={{ opacity: 1 }} // Mantén opacidad en 1 mientras está visible
-                    exit={{ opacity: 0 }} // Después de 5 segundos, se desvanecerá
-                    transition={{ duration: 5 }} // Duración de la animación
-                    onAnimationComplete={() => onFlashClear?.()} // Al completar la animación, limpia el mensaje
-                >
-                    {flashMessage}
-                </motion.div>
-            )}
+            <AnimatePresence>
+                {flashMessage && (
+                    <motion.div
+                        key={flashMessage}
+                        className="absolute right-4 z-20 flex items-center gap-2 rounded-xl bg-neutral-900/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur dark:bg-neutral-100/90 dark:text-neutral-900"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {flashMessage}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </section>
     );
 }
