@@ -49,6 +49,19 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+function getCsrfHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    if (typeof document === 'undefined') {
+        return { ...extra };
+    }
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    return {
+        ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+        ...extra,
+    };
+}
+
 export default function WorkerIndexPage({ workers: initialWorkers, filters }: WorkerPageProps) {
     // estado local
     const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
@@ -139,7 +152,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
 
         const res = await fetch('/api/workers', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(body),
         });
 
