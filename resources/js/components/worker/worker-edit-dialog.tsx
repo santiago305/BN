@@ -88,11 +88,21 @@ export function WorkerEditDialog({
                     <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
                         <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-neutral-300 text-yellow-600 focus:ring-yellow-500 dark:border-neutral-600"
+                            className={`h-4 w-4 rounded border-neutral-300 text-yellow-600 focus:ring-yellow-500 dark:border-neutral-600 ${
+                                !isActive ? 'cursor-not-allowed opacity-60' : ''
+                            }`}
                             checked={isInUse}
+                            disabled={!isActive}
                             onChange={(event) => onIsInUseChange(event.target.checked)}
                         />
-                        <span className="text-neutral-700 dark:text-neutral-200">En uso actualmente</span>
+                        <span className="text-neutral-700 dark:text-neutral-200">
+                            En uso actualmente
+                            {!isActive && (
+                                <span className="ml-1 text-[10px] text-neutral-500 dark:text-neutral-400">
+                                    (desactivado)
+                                </span>
+                            )}
+                        </span>
                     </label>
                 </div>
 

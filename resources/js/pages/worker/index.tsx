@@ -176,6 +176,7 @@ export default function WorkerIndexPage({
 
     async function toggleInUse(worker: Worker) {
         if (!worker.is_active) {
+            setFlashMsg('El usuario está inactivo y no se puede poner en uso');
             return;
         }
 
@@ -203,7 +204,7 @@ export default function WorkerIndexPage({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Usuarios - Admin" />
+            <Head title="Usuarios" />
 
             <div className="flex flex-col gap-2 px-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -264,7 +265,12 @@ export default function WorkerIndexPage({
                 isInUse={editIsInUse}
                 onNameChange={(value) => setEditName(value)}
                 onPasswordChange={(value) => setEditPassword(value)}
-                onIsActiveChange={(value) => setEditIsActive(value)}
+                onIsActiveChange={(value) => {
+                    setEditIsActive(value);
+                    if (!value) {
+                        setEditIsInUse(false);
+                    }
+                }}
                 onIsInUseChange={(value) => setEditIsInUse(value)}
                 onClose={() => setShowEdit(false)}
                 onSubmit={handleEdit}

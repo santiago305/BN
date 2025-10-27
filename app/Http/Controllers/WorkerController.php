@@ -185,9 +185,25 @@ class WorkerController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
-        $exists = DB::select('SELECT id FROM workers WHERE id = ? LIMIT 1', [$id]);
-        if (count($exists) === 0) {
+         $worker = DB::select('SELECT id, is_active, is_in_use FROM workers WHERE id = ? LIMIT 1', [$id]);
+        if (count($worker) === 0) {
             return response()->json(['message' => 'Worker not found'], 404);
+        }
+
+        $current = $worker[0];
+        $currentIsActive = (int) ($current->is_active ?? 0);
+        $currentIsInUse = (int) ($current->is_in_use ?? 0);
+
+        $newIsActive = $request->has('is_active')
+            ? ($request->boolean('is_active') ? 1 : 0)
+            : $currentIsActive;
+
+        $newIsInUse = $request->has('is_in_use')
+            ? ($request->boolean('is_in_use') ? 1 : 0)
+            : $currentIsInUse;
+
+        if ($newIsActive === 0) {
+            $newIsInUse = 0;
         }
 
         $fields = [];
@@ -203,14 +219,14 @@ class WorkerController extends Controller
             $params[] = Hash::make($request->input('password'));
         }
 
-        if ($request->has('is_in_use')) {
+        if ($request->has('is_in_use') || $newIsInUse !== $currentIsInUse) {
             $fields[] = 'is_in_use = ?';
-            $params[] = $request->boolean('is_in_use') ? 1 : 0;
+            $params[] = $newIsInUse;
         }
 
-        if ($request->has('is_active')) {
+        if ($request->has('is_active') || $newIsActive !== $currentIsActive) {
             $fields[] = 'is_active = ?';
-            $params[] = $request->boolean('is_active') ? 1 : 0;
+            $params[] = $newIsActive;
         }
 
         // siempre actualizamos updated_at
@@ -257,7 +273,7 @@ class WorkerController extends Controller
 
         DB::update(
             'UPDATE workers
-             SET is_active = 0, updated_at = ?
+             SET is_active = 0, is_in_use = 0, updated_at = ?
              WHERE id = ?',
             [Carbon::now(), $id]
         );
