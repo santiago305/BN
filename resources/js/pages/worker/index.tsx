@@ -258,6 +258,7 @@ export default function WorkerIndexPage({
                 <WorkerTable
                     workers={workers}
                     flashMessage={flashMsg}
+                    onFlashClear={() => setFlashMsg('')}
                     onToggleInUse={toggleInUse}
                     onEdit={openEditModal}
                     onDeactivate={handleDeactivate}

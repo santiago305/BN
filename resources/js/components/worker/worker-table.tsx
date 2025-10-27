@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 export function WorkerTable({
     workers,
     flashMessage,
+    onFlashClear,
     onToggleInUse,
     onEdit,
     onDeactivate,
@@ -70,7 +71,7 @@ export function WorkerTable({
                                    <button
                                         onClick={() => onToggleInUse(worker)}
                                         disabled={!worker.is_active}
-                                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors cursor-pointer ${
                                             worker.is_active
                                                 ? worker.is_in_use
                                                     ? 'border-yellow-600 bg-yellow-100 text-yellow-700 dark:border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-300'
@@ -127,7 +128,7 @@ export function WorkerTable({
                     animate={{ opacity: 1 }} // Mantén opacidad en 1 mientras está visible
                     exit={{ opacity: 0 }} // Después de 5 segundos, se desvanecerá
                     transition={{ duration: 5 }} // Duración de la animación
-                    onAnimationComplete={() => setFlashMsg('')} // Al completar la animación, limpia el mensaje
+                    onAnimationComplete={() => onFlashClear?.()} // Al completar la animación, limpia el mensaje
                 >
                     {flashMessage}
                 </motion.div>

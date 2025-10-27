@@ -56,6 +56,7 @@ export type WorkerFilterControlsProps = {
 export type WorkerTableProps = {
     workers: Worker[];
     flashMessage?: string;
+    onFlashClear?: () => void;
     onToggleInUse: (worker: Worker) => void | Promise<void>;
     onEdit: (worker: Worker) => void;
     onDeactivate: (id: number) => void | Promise<void>;
