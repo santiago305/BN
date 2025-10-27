@@ -71,12 +71,15 @@ export function WorkerTable({
                                 </td>
 
                                 <td className="px-4 py-3">
-                                    <button
+                                   <button
                                         onClick={() => onToggleInUse(worker)}
-                                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold ${
-                                            worker.is_in_use
-                                                ? 'border-yellow-600 bg-yellow-100 text-yellow-700 dark:border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                                : 'border-neutral-400 bg-neutral-100 text-neutral-700 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                                        disabled={!worker.is_active}
+                                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                                            worker.is_active
+                                                ? worker.is_in_use
+                                                    ? 'border-yellow-600 bg-yellow-100 text-yellow-700 dark:border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                                    : 'border-neutral-400 bg-neutral-100 text-neutral-700 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                                                : 'cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-400 opacity-60 dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-500'
                                         }`}
                                     >
                                         <Activity className="h-3 w-3" />

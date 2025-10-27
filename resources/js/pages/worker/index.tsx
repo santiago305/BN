@@ -175,6 +175,10 @@ export default function WorkerIndexPage({
     }
 
     async function toggleInUse(worker: Worker) {
+        if (!worker.is_active) {
+            return;
+        }
+
         const res = await fetch(`/api/workers/${worker.id}/in-use`, {
             method: 'PATCH',
             headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),

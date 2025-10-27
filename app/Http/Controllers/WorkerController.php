@@ -290,9 +290,15 @@ class WorkerController extends Controller
             'is_in_use' => 'required|boolean',
         ]);
 
-        $exists = DB::select('SELECT id FROM workers WHERE id = ? LIMIT 1', [$id]);
-        if (count($exists) === 0) {
+        $worker = DB::select('SELECT id, is_active FROM workers WHERE id = ? LIMIT 1', [$id]);
+        if (count($worker) === 0) {
             return response()->json(['message' => 'Worker not found'], 404);
+        }
+
+        if ((int) ($worker[0]->is_active ?? 0) === 0) {
+            return response()->json([
+                'message' => 'Worker is inactive and cannot change usage status',
+            ], 409);
         }
 
         DB::update(
