@@ -8,9 +8,19 @@ import { WorkerStatsCards } from '@/components/worker/worker-stats-cards';
 import { WorkerTable } from '@/components/worker/worker-table';
 import { WorkerCreateDialog } from '@/components/worker/worker-create-dialog';
 import { WorkerEditDialog } from '@/components/worker/worker-edit-dialog';
-import { getCsrfHeaders } from '@/lib/csrf';
 import { type BreadcrumbItem } from '@/types';
 import { type Worker, type WorkerPageProps } from '@/types/worker';
+import {
+    activateWorker,
+    createWorker,
+    deactivateWorker,
+    fetchWorkers,
+    updateWorker,
+    updateWorkerInUse,
+    type CreateWorkerPayload,
+    type UpdateWorkerPayload,
+    type WorkerFilters,
+} from '@/services/worker-service';
 
 function isWorkerPageProps(value: unknown): value is WorkerPageProps {
     if (!value || typeof value !== 'object') return false;
@@ -48,21 +58,19 @@ export default function WorkerIndexPage({
 
     const [flashMsg, setFlashMsg] = useState<string>('');
 
-    async function refreshList(optionalParams?: {
-        is_active?: string;
-        is_in_use?: string;
-    }) {
-        const params = new URLSearchParams();
-        if (optionalParams?.is_active && optionalParams.is_active !== '') {
-            params.set('is_active', optionalParams.is_active);
-        }
-        if (optionalParams?.is_in_use && optionalParams.is_in_use !== '') {
-            params.set('is_in_use', optionalParams.is_in_use);
-        }
+    async function refreshList(optionalParams?: WorkerFilters) {
+        const filtersToUse = optionalParams ?? {
+            is_active: filterActive,
+            is_in_use: filterInUse,
+        };
 
-        const res = await fetch(`/api/workers?${params.toString()}`);
-        const data = await res.json();
-        setWorkers(data);
+        try {
+            const data = await fetchWorkers(filtersToUse);
+            setWorkers(data);
+        } catch (error) {
+            console.error('Failed to refresh workers', error);
+            setFlashMsg('Error al cargar usuarios');
+        }
     }
 
     function applyFilters() {
@@ -83,20 +91,17 @@ export default function WorkerIndexPage({
     async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const body = {
+        const body: CreateWorkerPayload = {
             name: newName,
             password: newPassword,
             is_in_use: false,
             is_active: newIsActive,
         };
 
-        const res = await fetch('/api/workers', {
-            method: 'POST',
-            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
+        try {
+            await createWorker(body);
+        } catch (error) {
+            console.error('Failed to create worker', error);
             setFlashMsg('Error al crear usuario');
             return;
         }
@@ -122,11 +127,11 @@ export default function WorkerIndexPage({
         setShowEdit(true);
     }
 
-    async function handleEdit(event: React.FormEvent<HTMLFormElement>) {
+     async function handleEdit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (editId == null) return;
 
-        const body: Record<string, unknown> = {
+        const body: UpdateWorkerPayload = {
             name: editName,
             is_active: editIsActive,
             is_in_use: editIsInUse,
@@ -136,13 +141,10 @@ export default function WorkerIndexPage({
             body.password = editPassword;
         }
 
-        const res = await fetch(`/api/workers/${editId}`, {
-            method: 'PATCH',
-            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
+        try {
+            await updateWorker(editId, body);
+        } catch (error) {
+            console.error('Failed to update worker', error);
             setFlashMsg('Error al actualizar');
             return;
         }
@@ -157,12 +159,10 @@ export default function WorkerIndexPage({
     }
 
     async function handleDeactivate(id: number) {
-        const res = await fetch(`/api/workers/${id}`, {
-            method: 'DELETE',
-            headers: getCsrfHeaders(),
-        });
-
-        if (!res.ok) {
+        try {
+            await deactivateWorker(id);
+        } catch (error) {
+            console.error('Failed to deactivate worker', error);
             setFlashMsg('No se pudo desactivar');
             return;
         }
@@ -175,13 +175,10 @@ export default function WorkerIndexPage({
     }
 
     async function handleActivate(id: number) {
-        const res = await fetch(`/api/workers/${id}`, {
-            method: 'PATCH',
-            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ is_active: true }),
-        });
-
-        if (!res.ok) {
+        try {
+            await activateWorker(id);
+        } catch (error) {
+            console.error('Failed to activate worker', error);
             setFlashMsg('No se pudo activar');
             return;
         }
@@ -199,13 +196,10 @@ export default function WorkerIndexPage({
             return;
         }
 
-        const res = await fetch(`/api/workers/${worker.id}/in-use`, {
-            method: 'PATCH',
-            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ is_in_use: !worker.is_in_use }),
-        });
-
-        if (!res.ok) {
+        try {
+            await updateWorkerInUse(worker.id, !worker.is_in_use);
+        } catch (error) {
+            console.error('Failed to toggle in use status', error);
             setFlashMsg('Error al actualizar estado de uso');
             return;
         }

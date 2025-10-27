@@ -1,6 +1,3 @@
-+29
--13
-
 import { Activity, AlertCircle, CheckCircle, Edit3, Power } from 'lucide-react';
 
 import { useEffect } from 'react';
