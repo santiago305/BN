@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
+import {
+    Users2,
+    CheckCircle,
+    Activity,
+    Plus,
+    Filter,
+    Edit3,
+    Power,
+    AlertCircle,
+} from 'lucide-react';
 
 import AppLayout from '@/layouts/app-layout';
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
@@ -23,38 +33,26 @@ type WorkerPageProps = {
 };
 
 function isWorkerPageProps(value: unknown): value is WorkerPageProps {
-    if (!value || typeof value !== 'object') {
-        return false;
-    }
-
+    if (!value || typeof value !== 'object') return false;
     const props = value as Partial<WorkerPageProps>;
-
-    if (!Array.isArray(props.workers)) {
-        return false;
-    }
-
+    if (!Array.isArray(props.workers)) return false;
     const filters = props.filters;
-
-    if (!filters || typeof filters !== 'object') {
-        return false;
-    }
-
+    if (!filters || typeof filters !== 'object') return false;
     return 'is_active' in filters && 'is_in_use' in filters;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Usuarios',
-        href: '/workers',
-    },
+    { title: 'Usuarios', href: '/workers' },
 ];
 
+// csrf helper
 function getCsrfHeaders(extra: Record<string, string> = {}): Record<string, string> {
     if (typeof document === 'undefined') {
         return { ...extra };
     }
-
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const token = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute('content');
 
     return {
         ...(token ? { 'X-CSRF-TOKEN': token } : {}),
@@ -62,13 +60,20 @@ function getCsrfHeaders(extra: Record<string, string> = {}): Record<string, stri
     };
 }
 
-export default function WorkerIndexPage({ workers: initialWorkers, filters }: WorkerPageProps) {
-    // estado local
+export default function WorkerIndexPage({
+    workers: initialWorkers,
+    filters,
+}: WorkerPageProps) {
+    // estado local lista
     const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
 
-    // filtros
-    const [filterActive, setFilterActive] = useState<string>(filters.is_active ?? '');
-    const [filterInUse, setFilterInUse] = useState<string>(filters.is_in_use ?? '');
+    // filtros (UI controlado)
+    const [filterActive, setFilterActive] = useState<string>(
+        filters.is_active ?? ''
+    );
+    const [filterInUse, setFilterInUse] = useState<string>(
+        filters.is_in_use ?? ''
+    );
 
     // modal crear
     const [showCreate, setShowCreate] = useState(false);
@@ -80,11 +85,11 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
     const [showEdit, setShowEdit] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
     const [editName, setEditName] = useState('');
-    const [editPassword, setEditPassword] = useState(''); // opcional
+    const [editPassword, setEditPassword] = useState('');
     const [editIsActive, setEditIsActive] = useState(true);
     const [editIsInUse, setEditIsInUse] = useState(false);
 
-    // feedback simple
+    // toast
     const [flashMsg, setFlashMsg] = useState<string>('');
 
     const createDialogRef = useRef<HTMLDialogElement | null>(null);
@@ -92,24 +97,21 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
 
     // abrir/cerrar modal crear
     useEffect(() => {
-        if (showCreate) {
-            createDialogRef.current?.showModal();
-        } else {
-            createDialogRef.current?.close();
-        }
+        if (showCreate) createDialogRef.current?.showModal();
+        else createDialogRef.current?.close();
     }, [showCreate]);
 
     // abrir/cerrar modal editar
     useEffect(() => {
-        if (showEdit) {
-            editDialogRef.current?.showModal();
-        } else {
-            editDialogRef.current?.close();
-        }
+        if (showEdit) editDialogRef.current?.showModal();
+        else editDialogRef.current?.close();
     }, [showEdit]);
 
-    // helper para refrescar la lista desde /api/workers sin recargar toda la página
-    async function refreshList(optionalParams?: { is_active?: string; is_in_use?: string }) {
+    // helper para refrescar lista sin recargar toda la vista inertia
+    async function refreshList(optionalParams?: {
+        is_active?: string;
+        is_in_use?: string;
+    }) {
         const params = new URLSearchParams();
         if (optionalParams?.is_active && optionalParams.is_active !== '') {
             params.set('is_active', optionalParams.is_active);
@@ -123,7 +125,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
         setWorkers(data);
     }
 
-    // aplicar filtros recargando la página Inertia (para mantener filtros en URL/SSR)
+    // aplicar filtros con Inertia (para que URL quede limpia y SSR coherente)
     function applyFilters() {
         const params: Record<string, string> = {};
         if (filterActive !== '') params.is_active = filterActive;
@@ -139,7 +141,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
         });
     }
 
-    // CREAR worker
+    // CREAR
     async function handleCreate(e: React.FormEvent) {
         e.preventDefault();
 
@@ -157,11 +159,11 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
         });
 
         if (!res.ok) {
-            setFlashMsg('Error creating worker');
+            setFlashMsg('Error al crear usuario');
             return;
         }
 
-        setFlashMsg('Worker created');
+        setFlashMsg('Usuario creado');
         setShowCreate(false);
         setNewName('');
         setNewPassword('');
@@ -205,11 +207,11 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
         });
 
         if (!res.ok) {
-            setFlashMsg('Error updating worker');
+            setFlashMsg('Error al actualizar');
             return;
         }
 
-        setFlashMsg('Worker updated');
+        setFlashMsg('Usuario actualizado');
         setShowEdit(false);
 
         await refreshList({
@@ -218,7 +220,7 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
         });
     }
 
-    // DESACTIVAR (is_active = 0)
+    // DESACTIVAR rápido
     async function handleDeactivate(id: number) {
         const res = await fetch(`/api/workers/${id}`, {
             method: 'DELETE',
@@ -226,150 +228,200 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
         });
 
         if (!res.ok) {
-            setFlashMsg('Error deactivating worker');
+            setFlashMsg('No se pudo desactivar');
             return;
         }
 
-        setFlashMsg('Worker deactivated');
+        setFlashMsg('Usuario desactivado');
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
         });
     }
 
-    // Toggle rápido de is_in_use desde la tabla
+    // Toggle is_in_use
     async function toggleInUse(w: Worker) {
         const res = await fetch(`/api/workers/${w.id}/in-use`, {
             method: 'PATCH',
             headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({
-                is_in_use: !w.is_in_use,
-            }),
+            body: JSON.stringify({ is_in_use: !w.is_in_use }),
         });
 
         if (!res.ok) {
-            setFlashMsg('Error updating usage state');
+            setFlashMsg('Error al actualizar estado de uso');
             return;
         }
 
-        setFlashMsg('Usage state updated');
+        setFlashMsg('Estado de uso actualizado');
         await refreshList({
             is_active: filterActive,
             is_in_use: filterInUse,
         });
     }
 
+    const total = workers.length;
+    const activeCount = workers.filter((w) => w.is_active).length;
+    const inUseCount = workers.filter((w) => w.is_in_use).length;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Workers - Admin" />
+            <Head title="Usuarios - Admin" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            {/* Top header */}
+            <div className="flex flex-col gap-2 px-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                        Usuarios
+                    </h1>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                        Gestión de cuentas internas y estado de uso.
+                    </p>
+                </div>
 
-                {/* Tarjetas resumen */}
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border flex flex-col justify-between">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                        <div className="relative z-10">
-                            <div className="text-xs text-neutral-500 dark:text-neutral-400">Total Workers</div>
-                            <div className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-                                {workers.length}
+                <button
+                    onClick={() => setShowCreate(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span>Nuevo usuario</span>
+                </button>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-6 p-4">
+
+                {/* KPI cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {/* Total */}
+                    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/10 dark:stroke-neutral-100/10" />
+                        <div className="relative z-10 flex items-start justify-between">
+                            <div>
+                                <p className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                                    <Users2 className="h-3.5 w-3.5" />
+                                    Total usuarios
+                                </p>
+                                <div className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                                    {total}
+                                </div>
                             </div>
+                            <span className="rounded-lg bg-neutral-100 px-2 py-1 text-[10px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                                {total === 1 ? '1 cuenta' : total + ' cuentas'}
+                            </span>
                         </div>
                     </div>
 
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border flex flex-col justify-between">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                        <div className="relative z-10">
-                            <div className="text-xs text-neutral-500 dark:text-neutral-400">Active</div>
-                            <div className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-                                {workers.filter(w => w.is_active).length}
+                    {/* Activos */}
+                    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                        <PlaceholderPattern className="absolute inset-0 size-full stroke-green-600/10 dark:stroke-green-400/10" />
+                        <div className="relative z-10 flex items-start justify-between">
+                            <div>
+                                <p className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    Activos
+                                </p>
+                                <div className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                                    {activeCount}
+                                </div>
                             </div>
+                            <span className="rounded-lg bg-green-100 px-2 py-1 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                {activeCount} activos
+                            </span>
                         </div>
                     </div>
 
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border flex flex-col justify-between">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                        <div className="relative z-10">
-                            <div className="text-xs text-neutral-500 dark:text-neutral-400">In Use Now</div>
-                            <div className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-                                {workers.filter(w => w.is_in_use).length}
+                    {/* En uso ahora */}
+                    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                        <PlaceholderPattern className="absolute inset-0 size-full stroke-yellow-500/10 dark:stroke-yellow-400/10" />
+                        <div className="relative z-10 flex items-start justify-between">
+                            <div>
+                                <p className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                                    <Activity className="h-3.5 w-3.5" />
+                                    En uso ahora
+                                </p>
+                                <div className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                                    {inUseCount}
+                                </div>
                             </div>
+                            <span className="rounded-lg bg-yellow-100 px-2 py-1 text-[10px] font-semibold text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                {inUseCount} en uso
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Filtros + botón crear */}
-                <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border md:flex-row md:items-end md:justify-between">
-                    <div className="flex flex-col gap-2 md:flex-row md:items-end">
-                        <div className="flex flex-col text-sm">
-                            <label className="font-medium text-neutral-700 dark:text-neutral-200">Activo</label>
-                            <select
-                                className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-                                value={filterActive}
-                                onChange={(e) => setFilterActive(e.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                <option value="1">Solo activos</option>
-                                <option value="0">Solo inactivos</option>
-                            </select>
-                        </div>
+                {/* Filtros */}
+                <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:flex-row">
+                            <div className="flex flex-col text-sm">
+                                <label className="font-medium text-neutral-700 dark:text-neutral-200">
+                                    Activo
+                                </label>
+                                <select
+                                    className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                    value={filterActive}
+                                    onChange={(e) => setFilterActive(e.target.value)}
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="1">Solo activos</option>
+                                    <option value="0">Solo inactivos</option>
+                                </select>
+                            </div>
 
-                        <div className="flex flex-col text-sm md:ml-4">
-                            <label className="font-medium text-neutral-700 dark:text-neutral-200">En uso</label>
-                            <select
-                                className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-                                value={filterInUse}
-                                onChange={(e) => setFilterInUse(e.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                <option value="1">En uso</option>
-                                <option value="0">Libre</option>
-                            </select>
+                            <div className="flex flex-col text-sm">
+                                <label className="font-medium text-neutral-700 dark:text-neutral-200">
+                                    En uso
+                                </label>
+                                <select
+                                    className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                    value={filterInUse}
+                                    onChange={(e) => setFilterInUse(e.target.value)}
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="1">En uso</option>
+                                    <option value="0">Libre</option>
+                                </select>
+                            </div>
                         </div>
 
                         <button
                             onClick={applyFilters}
-                            className="mt-2 inline-flex items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 md:mt-0 md:ml-4"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
                         >
-                            Filtrar
+                            <Filter className="h-4 w-4" />
+                            <span>Aplicar filtros</span>
                         </button>
                     </div>
-
-                    <button
-                        onClick={() => setShowCreate(true)}
-                        className="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                        + New Worker
-                    </button>
-                </div>
+                </section>
 
                 {/* Tabla */}
-                <div className="relative min-h-[50vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <div className="absolute inset-0">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/10 dark:stroke-neutral-100/10" />
+                <section className="relative min-h-[50vh] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                    <div className="absolute inset-0 pointer-events-none">
+                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5 dark:stroke-neutral-100/5" />
                     </div>
 
                     <div className="relative z-10 overflow-x-auto">
                         <table className="min-w-full text-left text-sm text-neutral-800 dark:text-neutral-100">
-                            <thead className="bg-neutral-100 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                            <thead className="bg-neutral-50 text-[11px] font-semibold uppercase tracking-wide text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                                 <tr>
                                     <th className="px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">Name</th>
-                                    <th className="px-4 py-3">Active</th>
-                                    <th className="px-4 py-3">In Use</th>
-                                    <th className="px-4 py-3">Created</th>
-                                    <th className="px-4 py-3">Updated</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
+                                    <th className="px-4 py-3">Usuario</th>
+                                    <th className="px-4 py-3">Estado</th>
+                                    <th className="px-4 py-3">Uso</th>
+                                    <th className="px-4 py-3">Creado</th>
+                                    <th className="px-4 py-3">Actualizado</th>
+                                    <th className="px-4 py-3 text-right">Acciones</th>
                                 </tr>
                             </thead>
+
                             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                                 {workers.length === 0 && (
                                     <tr>
                                         <td
                                             colSpan={7}
-                                            className="px-4 py-6 text-center text-neutral-500 dark:text-neutral-400"
+                                            className="px-4 py-10 text-center text-neutral-500 dark:text-neutral-400"
                                         >
-                                            No workers found
+                                            No se encontraron usuarios
                                         </td>
                                     </tr>
                                 )}
@@ -377,54 +429,70 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
                                 {workers.map((w) => (
                                     <tr
                                         key={w.id}
-                                        className={w.is_active ? 'bg-white dark:bg-neutral-900' : 'bg-neutral-100/50 dark:bg-neutral-800/50'}
+                                        className={
+                                            w.is_active
+                                                ? 'bg-white dark:bg-neutral-900'
+                                                : 'bg-neutral-50 dark:bg-neutral-800/40'
+                                        }
                                     >
-                                        <td className="px-4 py-3 font-mono text-xs text-neutral-500 dark:text-neutral-400">
+                                        <td className="px-4 py-3 font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
                                             {w.id}
                                         </td>
-                                        <td className="px-4 py-3 font-medium">{w.name}</td>
+
+                                        <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                            {w.name}
+                                        </td>
+
                                         <td className="px-4 py-3">
                                             {w.is_active ? (
-                                                <span className="rounded-full bg-green-100 px-2 py-1 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                                    active
+                                                <span className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-2 py-1 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                    <CheckCircle className="h-3 w-3" />
+                                                    Activo
                                                 </span>
                                             ) : (
-                                                <span className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                                    inactive
+                                                <span className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                    <AlertCircle className="h-3 w-3" />
+                                                    Inactivo
                                                 </span>
                                             )}
                                         </td>
+
                                         <td className="px-4 py-3">
                                             <button
                                                 onClick={() => toggleInUse(w)}
-                                                className={`rounded-lg border px-2 py-1 text-[10px] font-semibold ${
+                                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold ${
                                                     w.is_in_use
                                                         ? 'border-yellow-600 bg-yellow-100 text-yellow-700 dark:border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-300'
                                                         : 'border-neutral-400 bg-neutral-100 text-neutral-700 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
                                                 }`}
                                             >
-                                                {w.is_in_use ? 'in use' : 'free'}
+                                                <Activity className="h-3 w-3" />
+                                                {w.is_in_use ? 'En uso' : 'Libre'}
                                             </button>
                                         </td>
-                                        <td className="px-4 py-3 text-xs text-neutral-500 dark:text-neutral-400">
+
+                                        <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">
                                             {w.created_at}
                                         </td>
-                                        <td className="px-4 py-3 text-xs text-neutral-500 dark:text-neutral-400">
+                                        <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">
                                             {w.updated_at}
                                         </td>
+
                                         <td className="px-4 py-3 text-right text-xs">
                                             <button
                                                 onClick={() => openEditModal(w)}
-                                                className="mr-2 rounded-lg bg-blue-600 px-3 py-1 font-semibold text-white hover:bg-blue-700"
+                                                className="mr-2 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-blue-700"
                                             >
-                                                Edit
+                                                <Edit3 className="h-3.5 w-3.5" />
+                                                Editar
                                             </button>
 
                                             <button
                                                 onClick={() => handleDeactivate(w.id)}
-                                                className="rounded-lg bg-red-600 px-3 py-1 font-semibold text-white hover:bg-red-700"
+                                                className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-red-700"
                                             >
-                                                Deactivate
+                                                <Power className="h-3.5 w-3.5" />
+                                                Desactivar
                                             </button>
                                         </td>
                                     </tr>
@@ -433,61 +501,91 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
                         </table>
                     </div>
 
+                    {/* toast flotante */}
                     {flashMsg && (
-                        <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900">
+                        <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl bg-neutral-900/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur dark:bg-neutral-100/90 dark:text-neutral-900">
                             {flashMsg}
                         </div>
                     )}
-                </div>
+                </section>
             </div>
 
             {/* MODAL CREAR */}
             <dialog
                 ref={createDialogRef}
-                className="rounded-xl border border-neutral-300 bg-white p-6 shadow-xl backdrop:bg-black/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                className="w-full max-w-sm rounded-2xl border border-neutral-300 bg-white shadow-2xl backdrop:bg-black/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 onClose={() => setShowCreate(false)}
             >
-                <form onSubmit={handleCreate} className="flex flex-col gap-4 min-w-[260px]">
-                    <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                        New Worker
-                    </h2>
+                <form
+                    onSubmit={handleCreate}
+                    className="flex flex-col"
+                >
+                    {/* header */}
+                    <div className="flex items-start justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
+                        <div>
+                            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                                Nuevo usuario
+                            </h2>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                Crea credenciales de acceso internas
+                            </p>
+                        </div>
 
-                    <div className="flex flex-col text-sm">
-                        <label className="font-medium">Name</label>
-                        <input
-                            className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            required
-                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowCreate(false)}
+                            className="rounded-lg px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                        >
+                            ✕
+                        </button>
                     </div>
 
-                    <div className="flex flex-col text-sm">
-                        <label className="font-medium">Password</label>
-                        <input
-                            type="password"
-                            className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            required
-                            minLength={4}
-                        />
-                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                            Se guardará en hash (bcrypt) en el servidor.
-                        </span>
+                    {/* body */}
+                    <div className="flex flex-col gap-4 p-4 text-sm">
+                        <div className="flex flex-col gap-1">
+                            <label className="font-medium text-neutral-700 dark:text-neutral-200">
+                                Nombre
+                            </label>
+                            <input
+                                className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="font-medium text-neutral-700 dark:text-neutral-200">
+                                Contraseña
+                            </label>
+                            <input
+                                type="password"
+                                className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                minLength={4}
+                            />
+                            <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                                Se almacenará con hash (bcrypt).
+                            </span>
+                        </div>
+
+                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-neutral-300 text-green-600 focus:ring-green-500 dark:border-neutral-600"
+                                checked={newIsActive}
+                                onChange={(e) => setNewIsActive(e.target.checked)}
+                            />
+                            <span className="text-neutral-700 dark:text-neutral-200">
+                                Usuario activo
+                            </span>
+                        </label>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={newIsActive}
-                            onChange={(e) => setNewIsActive(e.target.checked)}
-                        />
-                        <span>Activo</span>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
+                    {/* footer */}
+                    <div className="flex items-center justify-end gap-2 border-t border-neutral-200 p-4 dark:border-neutral-700">
                         <button
                             type="button"
                             className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -508,59 +606,90 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Wo
             {/* MODAL EDITAR */}
             <dialog
                 ref={editDialogRef}
-                className="rounded-xl border border-neutral-300 bg-white p-6 shadow-xl backdrop:bg-black/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                className="w-full max-w-sm rounded-2xl border border-neutral-300 bg-white shadow-2xl backdrop:bg-black/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 onClose={() => setShowEdit(false)}
             >
-                <form onSubmit={handleEdit} className="flex flex-col gap-4 min-w-[260px]">
-                    <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                        Edit Worker
-                    </h2>
+                <form
+                    onSubmit={handleEdit}
+                    className="flex flex-col"
+                >
+                    {/* header */}
+                    <div className="flex items-start justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
+                        <div>
+                            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                                Editar usuario
+                            </h2>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                Actualiza datos de acceso y estado
+                            </p>
+                        </div>
 
-                    <div className="flex flex-col text-sm">
-                        <label className="font-medium">Name</label>
-                        <input
-                            className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            required
-                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowEdit(false)}
+                            className="rounded-lg px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                        >
+                            ✕
+                        </button>
                     </div>
 
-                    <div className="flex flex-col text-sm">
-                        <label className="font-medium">New Password (opcional)</label>
-                        <input
-                            type="password"
-                            className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-                            value={editPassword}
-                            onChange={(e) => setEditPassword(e.target.value)}
-                            minLength={4}
-                        />
-                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                            Déjalo vacío si no quieres cambiar la contraseña.
-                        </span>
+                    {/* body */}
+                    <div className="flex flex-col gap-4 p-4 text-sm">
+                        <div className="flex flex-col gap-1">
+                            <label className="font-medium text-neutral-700 dark:text-neutral-200">
+                                Nombre
+                            </label>
+                            <input
+                                className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label className="font-medium text-neutral-700 dark:text-neutral-200">
+                                Nueva contraseña (opcional)
+                            </label>
+                            <input
+                                type="password"
+                                className="rounded-lg border border-neutral-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                value={editPassword}
+                                onChange={(e) => setEditPassword(e.target.value)}
+                                minLength={4}
+                            />
+                            <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                                Déjalo vacío si no quieres cambiarla.
+                            </span>
+                        </div>
+
+                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-neutral-300 text-green-600 focus:ring-green-500 dark:border-neutral-600"
+                                checked={editIsActive}
+                                onChange={(e) => setEditIsActive(e.target.checked)}
+                            />
+                            <span className="text-neutral-700 dark:text-neutral-200">
+                                Usuario activo
+                            </span>
+                        </label>
+
+                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-neutral-300 text-yellow-600 focus:ring-yellow-500 dark:border-neutral-600"
+                                checked={editIsInUse}
+                                onChange={(e) => setEditIsInUse(e.target.checked)}
+                            />
+                            <span className="text-neutral-700 dark:text-neutral-200">
+                                En uso actualmente
+                            </span>
+                        </label>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={editIsActive}
-                            onChange={(e) => setEditIsActive(e.target.checked)}
-                        />
-                        <span>Activo</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={editIsInUse}
-                            onChange={(e) => setEditIsInUse(e.target.checked)}
-                        />
-                        <span>En uso actualmente (is_in_use)</span>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
+                    {/* footer */}
+                    <div className="flex items-center justify-end gap-2 border-t border-neutral-200 p-4 dark:border-neutral-700">
                         <button
                             type="button"
                             className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
