@@ -1,18 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export type WorkerEditDialogProps = {
-    open: boolean;
-    name: string;
-    password: string;
-    isActive: boolean;
-    isInUse: boolean;
-    onNameChange: (value: string) => void;
-    onPasswordChange: (value: string) => void;
-    onIsActiveChange: (value: boolean) => void;
-    onIsInUseChange: (value: boolean) => void;
-    onClose: () => void;
-    onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-};
+import type { WorkerEditDialogProps } from '@/types/worker';
 
 export function WorkerEditDialog({
     open,

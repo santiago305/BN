@@ -1,12 +1,6 @@
 import { Filter } from 'lucide-react';
 
-export type WorkerFilterControlsProps = {
-    filterActive: string;
-    filterInUse: string;
-    onFilterActiveChange: (value: string) => void;
-    onFilterInUseChange: (value: string) => void;
-    onApply: () => void;
-};
+import type { WorkerFilterControlsProps } from '@/types/worker';
 
 export function WorkerFilterControls({
     filterActive,

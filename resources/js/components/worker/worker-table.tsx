@@ -1,15 +1,7 @@
 import { Activity, AlertCircle, CheckCircle, Edit3, Power } from 'lucide-react';
 
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
-import type { Worker } from '@/types/worker';
-
-export type WorkerTableProps = {
-    workers: Worker[];
-    flashMessage?: string;
-    onToggleInUse: (worker: Worker) => void | Promise<void>;
-    onEdit: (worker: Worker) => void;
-    onDeactivate: (id: number) => void | Promise<void>;
-};
+import type { WorkerTableProps } from '@/types/worker';
 
 export function WorkerTable({
     workers,

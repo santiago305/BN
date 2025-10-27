@@ -2,11 +2,7 @@ import { Activity, CheckCircle, Users2 } from 'lucide-react';
 
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 
-export type WorkerStatsCardsProps = {
-    total: number;
-    active: number;
-    inUse: number;
-};
+import type { WorkerStatsCardsProps } from '@/types/worker';
 
 export function WorkerStatsCards({ total, active, inUse }: WorkerStatsCardsProps) {
     return (

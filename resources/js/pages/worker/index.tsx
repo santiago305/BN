@@ -8,6 +8,7 @@ import { WorkerStatsCards } from '@/components/worker/worker-stats-cards';
 import { WorkerTable } from '@/components/worker/worker-table';
 import { WorkerCreateDialog } from '@/components/worker/worker-create-dialog';
 import { WorkerEditDialog } from '@/components/worker/worker-edit-dialog';
+import { getCsrfHeaders } from '@/lib/csrf';
 import { type BreadcrumbItem } from '@/types';
 import { type Worker, type WorkerPageProps } from '@/types/worker';
 
@@ -23,20 +24,6 @@ function isWorkerPageProps(value: unknown): value is WorkerPageProps {
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Usuarios', href: '/workers' },
 ];
-
-function getCsrfHeaders(extra: Record<string, string> = {}): Record<string, string> {
-    if (typeof document === 'undefined') {
-        return { ...extra };
-    }
-    const token = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute('content');
-
-    return {
-        ...(token ? { 'X-CSRF-TOKEN': token } : {}),
-        ...extra,
-    };
-}
 
 export default function WorkerIndexPage({
     workers: initialWorkers,
