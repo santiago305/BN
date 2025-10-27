@@ -2,6 +2,7 @@ import { Activity, AlertCircle, CheckCircle, Edit3, Power } from 'lucide-react';
 
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import type { WorkerTableProps } from '@/types/worker';
+import { motion } from 'framer-motion';
 
 export function WorkerTable({
     workers,
@@ -21,12 +22,9 @@ export function WorkerTable({
                 <table className="min-w-full text-left text-sm text-neutral-800 dark:text-neutral-100">
                     <thead className="bg-neutral-50 text-[11px] font-semibold uppercase tracking-wide text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                         <tr>
-                            <th className="px-4 py-3">ID</th>
                             <th className="px-4 py-3">Usuario</th>
                             <th className="px-4 py-3">Estado</th>
                             <th className="px-4 py-3">Uso</th>
-                            <th className="px-4 py-3">Creado</th>
-                            <th className="px-4 py-3">Actualizado</th>
                             <th className="px-4 py-3 text-right">Acciones</th>
                         </tr>
                     </thead>
@@ -49,9 +47,6 @@ export function WorkerTable({
                                         : 'bg-neutral-50 dark:bg-neutral-800/40'
                                 }
                             >
-                                <td className="px-4 py-3 font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
-                                    {worker.id}
-                                </td>
 
                                 <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
                                     {worker.name}
@@ -88,35 +83,36 @@ export function WorkerTable({
                                     </button>
                                 </td>
 
-                                <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">{worker.created_at}</td>
-                                <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">{worker.updated_at}</td>
-
                                 <td className="px-4 py-3 text-right text-xs">
-                                    <button
-                                        onClick={() => onEdit(worker)}
-                                        className="mr-2 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-blue-700"
+                                    <div
+                                    className='flex gap-2 w-auto h-auto justify-end flex-wrap'
                                     >
-                                        <Edit3 className="h-3.5 w-3.5" />
-                                        Editar
-                                    </button>
+                                        <button
+                                            onClick={() => onEdit(worker)}
+                                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-blue-700"
+                                        >
+                                            <Edit3 className="h-3.5 w-3.5" />
+                                            Editar
+                                        </button>
 
-                                    {worker.is_active ? (
-                                        <button
-                                            onClick={() => onDeactivate(worker.id)}
-                                            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-red-700"
-                                        >
-                                            <Power className="h-3.5 w-3.5" />
-                                            Desactivar
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => onActivate(worker.id)}
-                                            className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-green-700"
-                                        >
-                                            <Power className="h-3.5 w-3.5" />
-                                            Activar
-                                        </button>
-                                    )}
+                                        {worker.is_active ? (
+                                            <button
+                                                onClick={() => onDeactivate(worker.id)}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-red-700"
+                                            >
+                                                <Power className="h-3.5 w-3.5" />
+                                                Desactivar
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => onActivate(worker.id)}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-green-700"
+                                            >
+                                                <Power className="h-3.5 w-3.5" />
+                                                Activar
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -125,9 +121,16 @@ export function WorkerTable({
             </div>
 
             {flashMessage && (
-                <div className="absolute right-4 top-4 z-20 flex items-center gap-2 rounded-xl bg-neutral-900/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur dark:bg-neutral-100/90 dark:text-neutral-900">
+                <motion.div
+                    className="absolute right-4 z-20 flex items-center gap-2 rounded-xl bg-neutral-900/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur dark:bg-neutral-100/90 dark:text-neutral-900"
+                    initial={{ opacity: 1 }} // Comienza con opacidad 1
+                    animate={{ opacity: 1 }} // Mantén opacidad en 1 mientras está visible
+                    exit={{ opacity: 0 }} // Después de 5 segundos, se desvanecerá
+                    transition={{ duration: 5 }} // Duración de la animación
+                    onAnimationComplete={() => setFlashMsg('')} // Al completar la animación, limpia el mensaje
+                >
                     {flashMessage}
-                </div>
+                </motion.div>
             )}
         </section>
     );
