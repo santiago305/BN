@@ -14,13 +14,33 @@ type Worker = {
     updated_at: string;
 };
 
-type PageProps = {
+type WorkerPageProps = {
     workers: Worker[];
     filters: {
         is_active: string | null;
         is_in_use: string | null;
     };
 };
+
+function isWorkerPageProps(value: unknown): value is WorkerPageProps {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+
+    const props = value as Partial<WorkerPageProps>;
+
+    if (!Array.isArray(props.workers)) {
+        return false;
+    }
+
+    const filters = props.filters;
+
+    if (!filters || typeof filters !== 'object') {
+        return false;
+    }
+
+    return 'is_active' in filters && 'is_in_use' in filters;
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -29,7 +49,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function WorkerIndexPage({ workers: initialWorkers, filters }: PageProps) {
+export default function WorkerIndexPage({ workers: initialWorkers, filters }: WorkerPageProps) {
     // estado local
     const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
 
@@ -99,8 +119,9 @@ export default function WorkerIndexPage({ workers: initialWorkers, filters }: Pa
         router.get('/workers', params, {
             preserveState: true,
             onSuccess: (page) => {
-                const p = page.props as PageProps;
-                setWorkers(p.workers);
+                if (isWorkerPageProps(page.props)) {
+                    setWorkers(page.props.workers);
+                }
             },
         });
     }
