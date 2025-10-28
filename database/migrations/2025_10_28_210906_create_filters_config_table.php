@@ -12,7 +12,25 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('filters_config', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
+
+            // Horarios de funcionamiento detallados por día (lunes a domingo)
+            // Ejemplo:
+            // {
+            //     "monday": {"start": "08:00", "end": "17:00"},
+            //     "tuesday": {"start": "00:00", "end": "00:00"}, // no se trabaja
+            //     "wednesday": {"start": "08:00", "end": "17:00"},
+            //     "thursday": {"start": "08:00", "end": "17:00"},
+            //     "friday": {"start": "08:00", "end": "17:00"},
+            //     "saturday": {"start": "08:00", "end": "14:00"},
+            //     "sunday": {"start": "00:00", "end": "00:00"} // no se trabaja
+            // }
+            $table->json('working_hours');
+
+            $table->enum('captcha_type', ['cloudflare', 'recaptcha'])->default('recaptcha');
+            $table->unsignedInteger('relogin_interval')->default(5);
+            $table->string('filter_url');
+            $table->boolean('search_without_results')->default(false);
             $table->timestamps();
         });
     }
