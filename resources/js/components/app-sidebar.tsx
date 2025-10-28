@@ -12,7 +12,7 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, User } from 'lucide-react';
 import AppLogo from './app-logo';
 import { indexPage } from '@/routes/workers';
 
@@ -25,7 +25,7 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Usuarios',
         href: indexPage(), // Esto es para que no tenga una ruta directa
-        icon: LayoutGrid,
+        icon: User,
         children: [
             {
                 title: 'Crear Usuario',

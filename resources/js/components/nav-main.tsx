@@ -67,7 +67,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                             <SidebarMenuItem key={child.title}>
                                                 <SidebarMenuButton asChild>
                                                     <Link href={child.href} prefetch>
-                                                        <span>{child.title}</span>
+                                                        {/* Aplicar estilos para hijos */}
+                                                        <span className="text-sm ml-6">
+                                                            {child.title}
+                                                        </span>
                                                     </Link>
                                                 </SidebarMenuButton>
                                             </SidebarMenuItem>
