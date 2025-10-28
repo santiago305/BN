@@ -48,42 +48,12 @@ class WorkerController extends Controller
      */
     public function index(Request $request)
     {
-        // Obtener los parámetros de la solicitud
-        $isActive = $request->input('is_active');
-        $isInUse = $request->input('is_in_use');
+        $listing = $this->getWorkerListing($request);
 
-        // Construir la consulta SQL
-        $query = "SELECT id, name, is_active, is_in_use FROM workers WHERE 1=1";
-
-        // Filtrar por estado activo si se proporciona
-        if ($isActive !== null) {
-            $query .= " AND is_active = :isActive";
-        }
-
-        // Filtrar por uso si se proporciona
-        if ($isInUse !== null) {
-            $query .= " AND is_in_use = :isInUse";
-        }
-
-        // Ejecutar la consulta con parámetros
-        $workers = DB::select($query, [
-            ':isActive' => $isActive,
-            ':isInUse' => $isInUse
-        ]);
-
-        // Obtener la información de paginación si es necesario (esto es un ejemplo simple)
-        $totalWorkers = DB::table('workers')->count();
-
-        // Devolver la respuesta en formato JSON
         return response()->json([
-            'data' => $workers,
-            'meta' => [
-                'total' => $totalWorkers
-            ],
-            'stats' => [
-                'active_workers' => DB::table('workers')->where('is_active', 1)->count(),
-                'in_use_workers' => DB::table('workers')->where('is_in_use', 1)->count()
-            ],
+            'data' => $listing['workers'],
+            'meta' => $listing['meta'],
+            'stats' => $listing['stats'],
         ]);
     }
 
@@ -366,5 +336,60 @@ class WorkerController extends Controller
     private function normalizeWorkers(array $workers): array
     {
         return WorkerNormalizer::normalizeMany($workers);
+    }
+    private function getWorkerListing(Request $request): array
+    {
+        $perPage = (int) $request->input('per_page', 10);
+        if ($perPage <= 0) {
+            $perPage = 10;
+        }
+
+        $requestedPage = (int) $request->input('page', 1);
+        if ($requestedPage <= 0) {
+            $requestedPage = 1;
+        }
+
+        $baseQuery = DB::table('workers')
+            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at');
+
+        if ($request->has('is_active') && $request->input('is_active') !== '') {
+            $baseQuery->where('is_active', $request->boolean('is_active'));
+        }
+
+        if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
+            $baseQuery->where('is_in_use', $request->boolean('is_in_use'));
+        }
+
+        $filteredQuery = clone $baseQuery;
+        $totalFiltered = $filteredQuery->count();
+
+        $lastPage = max(1, (int) ceil($totalFiltered / $perPage));
+        $currentPage = min($requestedPage, $lastPage);
+
+        $workers = $baseQuery
+            ->orderByDesc('created_at')
+            ->offset(($currentPage - 1) * $perPage)
+            ->limit($perPage)
+            ->get();
+
+        $allWorkersQuery = DB::table('workers');
+        $totalWorkers = (clone $allWorkersQuery)->count();
+        $activeWorkers = (clone $allWorkersQuery)->where('is_active', true)->count();
+        $inUseWorkers = (clone $allWorkersQuery)->where('is_in_use', true)->count();
+
+        return [
+            'workers' => $this->normalizeWorkers($workers->all()),
+            'meta' => [
+                'total' => $totalFiltered,
+                'per_page' => $perPage,
+                'current_page' => $currentPage,
+                'last_page' => $lastPage,
+            ],
+            'stats' => [
+                'total' => $totalWorkers,
+                'active' => $activeWorkers,
+                'inUse' => $inUseWorkers,
+            ],
+        ];
     }
 }
