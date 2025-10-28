@@ -48,12 +48,42 @@ class WorkerController extends Controller
      */
     public function index(Request $request)
     {
-        $listing = $this->getWorkerListing($request);
+        // Obtener los parámetros de la solicitud
+        $isActive = $request->input('is_active');
+        $isInUse = $request->input('is_in_use');
 
+        // Construir la consulta SQL
+        $query = "SELECT id, name, is_active, is_in_use FROM workers WHERE 1=1";
+
+        // Filtrar por estado activo si se proporciona
+        if ($isActive !== null) {
+            $query .= " AND is_active = :isActive";
+        }
+
+        // Filtrar por uso si se proporciona
+        if ($isInUse !== null) {
+            $query .= " AND is_in_use = :isInUse";
+        }
+
+        // Ejecutar la consulta con parámetros
+        $workers = DB::select($query, [
+            ':isActive' => $isActive,
+            ':isInUse' => $isInUse
+        ]);
+
+        // Obtener la información de paginación si es necesario (esto es un ejemplo simple)
+        $totalWorkers = DB::table('workers')->count();
+
+        // Devolver la respuesta en formato JSON
         return response()->json([
-            'data' => $listing['workers'],
-            'meta' => $listing['meta'],
-            'stats' => $listing['stats'],
+            'data' => $workers,
+            'meta' => [
+                'total' => $totalWorkers
+            ],
+            'stats' => [
+                'active_workers' => DB::table('workers')->where('is_active', 1)->count(),
+                'in_use_workers' => DB::table('workers')->where('is_in_use', 1)->count()
+            ],
         ]);
     }
 
