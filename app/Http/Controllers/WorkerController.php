@@ -94,16 +94,17 @@ class WorkerController extends Controller
      */
     public function show($id)
     {
-        $worker = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->where('id', $id)
-            ->first();
+        $worker = DB::select('
+            SELECT id, name, dni, is_in_use, is_active
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
-        if ($worker === null) {
+        if (empty($worker)) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        return response()->json($this->normalizeWorker($worker));
+        return response()->json($this->normalizeWorker($worker[0]));
     }
 
     /**
@@ -126,7 +127,11 @@ class WorkerController extends Controller
         $now = Carbon::now();
         $id = (string) Str::uuid();
 
-        DB::table('workers')->insert([
+        // Insertar el nuevo trabajador
+        DB::insert('
+            INSERT INTO workers (id, name, dni, password, is_in_use, is_active, created_at, updated_at)
+            VALUES (:id, :name, :dni, :password, :is_in_use, :is_active, :created_at, :updated_at)
+        ', [
             'id' => $id,
             'name' => $request->input('name'),
             'dni' => $request->input('dni'),
@@ -137,14 +142,20 @@ class WorkerController extends Controller
             'updated_at' => $now,
         ]);
 
-        $created = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->where('id', $id)
-            ->first();
+        // Obtener el trabajador recién insertado
+        $worker = DB::select('
+            SELECT id, name, dni, is_in_use, is_active, created_at, updated_at
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
+
+        if (empty($worker)) {
+            return response()->json(['message' => 'Worker not found'], 404);
+        }
 
         return response()->json([
             'message' => 'Worker created successfully',
-            'data' => $this->normalizeWorker($created),
+            'data' => $this->normalizeWorker($worker[0]),
         ], 201);
     }
 
@@ -161,55 +172,60 @@ class WorkerController extends Controller
      */
     public function update(UpdateWorkerRequest $request, $id)
     {
-        $worker = DB::table('workers')
-            ->select('id', 'is_active', 'is_in_use')
-            ->where('id', $id)
-            ->first();
+        // Verificar si el trabajador existe
+        $worker = DB::select('
+            SELECT id, is_active, is_in_use
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
-        if ($worker === null) {
+        if (empty($worker)) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        // La lógica de actualización sigue igual, pero ahora los datos ya están validados
+        // Construir dinámicamente los campos a actualizar
         $fields = [];
-        if ($request->has('name')) {
-            $fields['name'] = $request->input('name');
+        $updateFields = [];
+
+        // Recorrer el request y agregar los campos que están presentes
+        foreach ($request->only(['name', 'dni', 'password', 'is_in_use', 'is_active']) as $key => $value) {
+            if ($key == 'password') {
+                // Si es el campo password, hashearlo antes de añadirlo
+                $fields[$key] = Hash::make($value);
+            } else {
+                $fields[$key] = $value;
+            }
         }
 
-        if ($request->has('dni')) {
-            $fields['dni'] = $request->input('dni');
-        }
-
-        if ($request->has('password')) {
-            $fields['password'] = Hash::make($request->input('password'));
-        }
-
-        if ($request->has('is_in_use')) {
-            $fields['is_in_use'] = $request->boolean('is_in_use');
-        }
-
-        if ($request->has('is_active')) {
-            $fields['is_active'] = $request->boolean('is_active');
-        }
-
+        // Si no hay campos para actualizar, devolver error
         if (empty($fields)) {
             return response()->json(['message' => 'No fields to update'], 400);
         }
 
+        // Añadir el campo updated_at
         $fields['updated_at'] = Carbon::now();
 
-        DB::table('workers')
-            ->where('id', $id)
-            ->update($fields);
+        // Preparar la consulta de actualización
+        $updateQuery = 'UPDATE workers SET ';
+        $updateFields = [];
+        foreach ($fields as $key => $value) {
+            $updateFields[] = "$key = :$key";
+        }
+        $updateQuery .= implode(', ', $updateFields) . ' WHERE id = :id';
 
-        $updated = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->where('id', $id)
-            ->first();
+        // Ejecutar la consulta de actualización
+        DB::update($updateQuery, array_merge($fields, ['id' => $id]));
+
+        // Obtener el trabajador actualizado
+        $updatedWorker = DB::select('
+            SELECT id, name, dni, is_in_use, is_active, created_at, updated_at
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
         return response()->json([
             'message' => 'Worker updated successfully',
-            'data' => $this->normalizeWorker($updated),
+            'data' => $this->normalizeWorker($updatedWorker[0]),
         ]);
     }
 
@@ -222,31 +238,39 @@ class WorkerController extends Controller
      */
     public function destroy($id)
     {
-        $exists = DB::table('workers')
-            ->select('id')
-            ->where('id', $id)
-            ->first();
+        // Verificar si el trabajador existe
+        $worker = DB::select('
+            SELECT id
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
-        if ($exists === null) {
+        if (empty($worker)) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        DB::table('workers')
-            ->where('id', $id)
-            ->update([
-                'is_active' => false,
-                'is_in_use' => false,
-                'updated_at' => Carbon::now(),
-            ]);
+        // Actualizar los campos is_active e is_in_use
+        DB::update('
+            UPDATE workers
+            SET is_active = :is_active, is_in_use = :is_in_use, updated_at = :updated_at
+            WHERE id = :id
+        ', [
+            'is_active' => false,
+            'is_in_use' => false,
+            'updated_at' => Carbon::now(),
+            'id' => $id
+        ]);
 
-        $updated = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->where('id', $id)
-            ->first();
+        // Obtener el trabajador actualizado
+        $updatedWorker = DB::select('
+            SELECT id, name, dni, is_in_use, is_active, created_at, updated_at
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
         return response()->json([
             'message' => 'Worker deactivated (is_active = 0)',
-            'data' => $this->normalizeWorker($updated),
+            'data' => $this->normalizeWorker($updatedWorker[0]),
         ]);
     }
 
@@ -260,99 +284,72 @@ class WorkerController extends Controller
      */
     public function markInUse(UpdateWorkerUsageRequest $request, $id)
     {
-        $worker = DB::table('workers')
-            ->select('id', 'is_active')
-            ->where('id', $id)
-            ->first();
+        // Verificar si el trabajador existe y si está activo
+        $worker = DB::select('
+            SELECT id, is_active
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
-        if ($worker === null) {
+        if (empty($worker)) {
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        if ((bool) ($worker->is_active ?? false) === false) {
+        // Si el trabajador está inactivo, no se puede cambiar el estado de uso
+        if (!$worker[0]->is_active) {
             return response()->json([
                 'message' => 'Worker is inactive and cannot change usage status',
             ], 409);
         }
 
-        DB::table('workers')
-            ->where('id', $id)
-            ->update([
-                'is_in_use' => $request->boolean('is_in_use'),
-                'updated_at' => Carbon::now(),
-            ]);
+        // Actualizar el estado de uso del trabajador
+        DB::update('
+            UPDATE workers
+            SET is_in_use = :is_in_use, updated_at = :updated_at
+            WHERE id = :id
+        ', [
+            'is_in_use' => $request->boolean('is_in_use'),
+            'updated_at' => Carbon::now(),
+            'id' => $id,
+        ]);
 
-        $updated = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->where('id', $id)
-            ->first();
+        // Obtener el trabajador actualizado
+        $updatedWorker = DB::select('
+            SELECT id, name, dni, is_in_use, is_active, created_at, updated_at
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $id]);
 
         return response()->json([
             'message' => 'Worker usage status updated',
-            'data' => $this->normalizeWorker($updated),
+            'data' => $this->normalizeWorker($updatedWorker[0]),
         ]);
-
-    }
-
-    private function getWorkerListing(Request $request): array
-    {
-        $perPage = 20;
-        $page = max(1, (int) $request->input('page', 1));
-
-        $query = $this->filteredWorkersQuery($request);
-
-        $total = (clone $query)->count();
-        $lastPage = max(1, (int) ceil($total / $perPage));
-        $page = min($page, $lastPage);
-        $offset = ($page - 1) * $perPage;
-
-        $workers = (clone $query)
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->orderBy('name')
-            ->offset($offset)
-            ->limit($perPage)
-            ->get()
-            ->map(fn ($worker) => $this->normalizeWorker($worker))
-            ->values()
-            ->all();
-
-        $statsRow = (clone $query)
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN is_active THEN 1 ELSE 0 END) as active')
-            ->selectRaw('SUM(CASE WHEN is_in_use THEN 1 ELSE 0 END) as in_use')
-            ->first();
-
-        $stats = [
-            'total' => (int) ($statsRow->total ?? 0),
-            'active' => (int) ($statsRow->active ?? 0),
-            'inUse' => (int) ($statsRow->in_use ?? 0),
-        ];
-
-        return [
-            'workers' => $workers,
-            'meta' => [
-                'total' => $total,
-                'per_page' => $perPage,
-                'current_page' => $page,
-                'last_page' => $lastPage,
-            ],
-            'stats' => $stats,
-        ];
     }
 
     private function filteredWorkersQuery(Request $request)
     {
-        $query = DB::table('workers');
+        // Construir la consulta base en SQL
+        $query = 'SELECT * FROM workers WHERE 1=1';
 
+        // Parámetros para bind
+        $parameters = [];
+
+        // Filtro por 'is_active'
         if ($request->has('is_active') && $request->input('is_active') !== '') {
-            $query->where('is_active', $request->boolean('is_active'));
+            $query .= ' AND is_active = :is_active';
+            $parameters['is_active'] = $request->boolean('is_active');
         }
 
+        // Filtro por 'is_in_use'
         if ($request->has('is_in_use') && $request->input('is_in_use') !== '') {
-            $query->where('is_in_use', $request->boolean('is_in_use'));
+            $query .= ' AND is_in_use = :is_in_use';
+            $parameters['is_in_use'] = $request->boolean('is_in_use');
         }
 
-        return $query;
+        // Ejecutar la consulta con los parámetros bind
+        $results = DB::select($query, $parameters);
+
+        return $results;
     }
 
     /**
@@ -360,11 +357,7 @@ class WorkerController extends Controller
      */
     private function normalizeWorker($worker)
     {
-        if ($worker === null) {
-            return null;
-        }
-
-        return WorkerNormalizer::normalize($worker);
+        return $worker ? WorkerNormalizer::normalize($worker) : null;
     }
 
     /**
