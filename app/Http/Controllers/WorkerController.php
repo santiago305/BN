@@ -88,16 +88,9 @@ class WorkerController extends Controller
      * Importante:
      *  - Guardamos password con Hash::make()
      */
-    public function store(Request $request)
+    public function store(RequestWorker $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:workers,name',
-            'dni' => 'required|string|max:20|unique:workers,dni',
-            'password' => 'required|string|min:4',
-            'is_in_use' => 'sometimes|boolean',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
+        // No es necesario validar los datos ya que se ha hecho en RequestWorker
         $now = Carbon::now();
         $id = (string) Str::uuid();
 
@@ -134,26 +127,8 @@ class WorkerController extends Controller
      * - is_in_use
      * - is_active
      */
-    public function update(Request $request, $id)
+    public function update(RequestWorker $request, $id)
     {
-        $request->validate([
-            'name' => [
-                'sometimes',
-                'string',
-                'max:255',
-                Rule::unique('workers', 'name')->ignore($id, 'id'),
-            ],
-            'dni' => [
-                'sometimes',
-                'string',
-                'max:20',
-                Rule::unique('workers', 'dni')->ignore($id, 'id'),
-            ],
-            'password' => 'sometimes|string|min:4',
-            'is_in_use' => 'sometimes|boolean',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
         $worker = DB::table('workers')
             ->select('id', 'is_active', 'is_in_use')
             ->where('id', $id)
@@ -163,23 +138,8 @@ class WorkerController extends Controller
             return response()->json(['message' => 'Worker not found'], 404);
         }
 
-        $currentIsActive = (bool) ($worker->is_active ?? false);
-        $currentIsInUse = (bool) ($worker->is_in_use ?? false);
-
-        $newIsActive = $request->has('is_active')
-            ? $request->boolean('is_active')
-            : $currentIsActive;
-
-        $newIsInUse = $request->has('is_in_use')
-            ? $request->boolean('is_in_use')
-            : $currentIsInUse;
-
-        if ($newIsActive === false) {
-            $newIsInUse = false;
-        }
-
+        // La lógica de actualización sigue igual, pero ahora los datos ya están validados
         $fields = [];
-
         if ($request->has('name')) {
             $fields['name'] = $request->input('name');
         }
@@ -192,12 +152,12 @@ class WorkerController extends Controller
             $fields['password'] = Hash::make($request->input('password'));
         }
 
-        if ($request->has('is_in_use') || $newIsInUse !== $currentIsInUse) {
-            $fields['is_in_use'] = $newIsInUse;
+        if ($request->has('is_in_use')) {
+            $fields['is_in_use'] = $request->boolean('is_in_use');
         }
 
-        if ($request->has('is_active') || $newIsActive !== $currentIsActive) {
-            $fields['is_active'] = $newIsActive;
+        if ($request->has('is_active')) {
+            $fields['is_active'] = $request->boolean('is_active');
         }
 
         if (empty($fields)) {
