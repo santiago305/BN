@@ -1,4 +1,3 @@
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -25,10 +24,21 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Usuarios',
-        href: indexPage(),
+        href: indexPage(), // Esto es para que no tenga una ruta directa
         icon: LayoutGrid,
+        children: [
+            {
+                title: 'Crear Usuario',
+                href: '/crear-usuario', // Cambia esto con la ruta correcta
+            },
+            {
+                title: 'Lista de Usuarios',
+                href: '/usuarios', // Cambia esto con la ruta correcta
+            },
+        ],
     },
 ];
+
 
 
 export function AppSidebar() {
