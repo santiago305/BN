@@ -20,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/workers', [WorkerController::class, 'indexPage'])
         ->name('workers.indexPage');
 
+    Route::get('/workers/{worker}', [WorkerController::class, 'showPage'])
+        ->name('workers.show');
     // -----------------------------------------------------------------
     // API Workers
     // -----------------------------------------------------------------

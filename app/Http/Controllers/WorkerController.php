@@ -38,6 +38,28 @@ class WorkerController extends Controller
     }
 
     /**
+     * showPage
+     * Renderiza la vista individual de un worker.
+     * GET /workers/{worker}
+     */
+    public function showPage(string $workerId)
+    {
+        $worker = DB::select('
+            SELECT id, name, dni, is_in_use, is_active, created_at, updated_at
+            FROM workers
+            WHERE id = :id
+        ', ['id' => $workerId]);
+
+        if (empty($worker)) {
+            abort(404);
+        }
+
+        return Inertia::render('worker/show', [
+            'worker' => $this->normalizeWorker($worker[0]),
+        ]);
+    }
+
+    /**
      * index (API)
      * Devuelve todos los workers como JSON.
      * GET /api/workers

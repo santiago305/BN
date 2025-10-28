@@ -1,5 +1,6 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
+import type { WorkerSidebarEntry } from './worker';
 
 export interface Auth {
     user: User;
@@ -28,6 +29,7 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     sidebarOpen: boolean;
+    sidebarWorkers?: WorkerSidebarEntry[];
     [key: string]: unknown;
 }
 

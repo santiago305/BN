@@ -10,38 +10,50 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import { LayoutGrid, User } from 'lucide-react';
-import AppLogo from './app-logo';
 import { indexPage } from '@/routes/workers';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Usuarios',
-        href: indexPage(), // Esto es para que no tenga una ruta directa
-        icon: User,
-        children: [
-            {
-                title: 'Crear Usuario',
-                href: '/crear-usuario', // Cambia esto con la ruta correcta
-            },
-            {
-                title: 'Lista de Usuarios',
-                href: '/usuarios', // Cambia esto con la ruta correcta
-            },
-        ],
-    },
-];
-
-
+import { type NavItem } from '@/types';
+import { type WorkerSidebarEntry } from '@/types/worker';
+import { Link, usePage } from '@inertiajs/react';
+import { LayoutGrid, User } from 'lucide-react';
+import { useMemo } from 'react';
+import AppLogo from './app-logo';
 
 export function AppSidebar() {
+    const { props } = usePage<{ sidebarWorkers?: WorkerSidebarEntry[] }>();
+
+    const sidebarWorkers = useMemo(
+        () => (Array.isArray(props.sidebarWorkers) ? props.sidebarWorkers : []),
+        [props.sidebarWorkers],
+    );
+
+    const workerChildren = useMemo<NavItem[]>(
+        () =>
+            sidebarWorkers.map((worker) => ({
+                title: worker.name,
+                href: `/workers/${worker.id}`,
+            })),
+        [sidebarWorkers],
+    );
+
+    const mainNavItems = useMemo<NavItem[]>(
+        () => [
+            {
+                title: 'Dashboard',
+                href: dashboard(),
+                icon: LayoutGrid,
+            },
+            {
+                title: 'Usuarios',
+                href: indexPage(),
+                icon: User,
+                ...(workerChildren.length > 0
+                    ? { children: workerChildren }
+                    : {}),
+            },
+        ],
+        [workerChildren],
+    );
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>

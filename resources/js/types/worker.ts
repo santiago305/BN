@@ -10,6 +10,8 @@ export type Worker = {
     updated_at: string;
 };
 
+export type WorkerSidebarEntry = Pick<Worker, 'id' | 'name'>;
+
 export type WorkerFilters = {
     is_active: string | null;
     is_in_use: string | null;
