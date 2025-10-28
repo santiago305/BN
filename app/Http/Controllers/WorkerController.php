@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Requests\StoreWorkerRequest;
+use App\Http\Requests\UpdateWorkerRequest;
+use App\Http\Requests\UpdateWorkerUsageRequest;
 use App\Support\WorkerNormalizer;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -88,7 +90,7 @@ class WorkerController extends Controller
      * Importante:
      *  - Guardamos password con Hash::make()
      */
-    public function store(RequestWorker $request)
+    public function store(StoreWorkerRequest $request)
     {
         // No es necesario validar los datos ya que se ha hecho en RequestWorker
         $now = Carbon::now();
@@ -127,7 +129,7 @@ class WorkerController extends Controller
      * - is_in_use
      * - is_active
      */
-    public function update(RequestWorker $request, $id)
+    public function update(UpdateWorkerRequest $request, $id)
     {
         $worker = DB::table('workers')
             ->select('id', 'is_active', 'is_in_use')
@@ -226,12 +228,8 @@ class WorkerController extends Controller
      * Campo:
      * - is_in_use (boolean)
      */
-    public function markInUse(Request $request, $id)
+    public function markInUse(UpdateWorkerUsageRequest $request, $id)
     {
-        $request->validate([
-            'is_in_use' => 'required|boolean',
-        ]);
-
         $worker = DB::table('workers')
             ->select('id', 'is_active')
             ->where('id', $id)
