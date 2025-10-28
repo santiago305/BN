@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Support\WorkerNormalizer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,29 +12,24 @@ class AutomationWorkerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->orderBy('name');
+        $data = $request->validate([
+            'name' => 'required_without:dni|string',
+            'dni' => 'required_without:name|string',
+        ]);
 
-        if ($request->filled('name')) {
-            $query->where('name', $request->input('name'));
-        }
+        $identifierColumn = array_key_exists('name', $data) ? 'name' : 'dni';
+        $identifierValue = $data[$identifierColumn];
 
-        if ($request->filled('dni')) {
-            $query->where('dni', $request->input('dni'));
-        }
+        $query = 'SELECT is_in_use FROM workers WHERE ' . $identifierColumn . ' = :identifier LIMIT 1';
+        $worker = DB::select($query, ['identifier' => $identifierValue]);
 
-        $workers = $query->get();
-
-        if (($request->filled('name') || $request->filled('dni')) && $workers->isEmpty()) {
+        if (empty($worker)) {
             return response()->json([
                 'message' => 'Worker not found',
             ], 404);
         }
 
-        return response()->json([
-            'data' => WorkerNormalizer::normalizeMany($workers->all()),
-        ]);
+        return response()->json((bool) ($worker[0]->is_in_use ?? false));
     }
 
     public function updateUsage(Request $request)
@@ -48,22 +42,19 @@ class AutomationWorkerController extends Controller
             'force' => 'sometimes|boolean',
         ]);
 
-        $workerQuery = DB::table('workers')
-            ->select('id', 'name', 'dni', 'password', 'is_in_use', 'is_active', 'created_at', 'updated_at');
+        $identifierColumn = array_key_exists('name', $data) ? 'name' : 'dni';
+        $identifierValue = $data[$identifierColumn];
 
-        if (!empty($data['name'] ?? null)) {
-            $workerQuery->where('name', $data['name']);
-        } else {
-            $workerQuery->where('dni', $data['dni']);
-        }
+        $query = 'SELECT id, password, is_in_use, is_active FROM workers WHERE ' . $identifierColumn . ' = :identifier LIMIT 1';
+        $worker = DB::select($query, ['identifier' => $identifierValue]);
 
-        $worker = $workerQuery->first();
-
-        if ($worker === null) {
+        if (empty($worker)) {
             return response()->json([
                 'message' => 'Worker not found',
             ], 404);
         }
+
+        $worker = $worker[0];
 
         if (!Hash::check($data['password'], $worker->password)) {
             return response()->json([
@@ -88,21 +79,23 @@ class AutomationWorkerController extends Controller
             ], 409);
         }
 
-        DB::table('workers')
-            ->where('id', $worker->id)
-            ->update([
-                'is_in_use' => $desiredState,
-                'updated_at' => Carbon::now(),
-            ]);
+        $updateQuery = 'UPDATE workers SET is_in_use = :is_in_use, updated_at = :updated_at WHERE id = :id';
+        DB::update($updateQuery, [
+            'is_in_use' => $desiredState,
+            'updated_at' => Carbon::now(),
+            'id' => $worker->id,
+        ]);
 
-        $updated = DB::table('workers')
-            ->select('id', 'name', 'dni', 'is_in_use', 'is_active', 'created_at', 'updated_at')
-            ->where('id', $worker->id)
-            ->first();
+        $updatedQuery = 'SELECT is_in_use FROM workers WHERE id = :id LIMIT 1';
+        $updated = DB::select($updatedQuery, ['id' => $worker->id]);
+
+        $updatedWorker = $updated[0] ?? null;
 
         return response()->json([
             'message' => $desiredState ? 'Worker marked as in use' : 'Worker released',
-            'data' => WorkerNormalizer::normalize($updated),
+            'data' => [
+                'is_in_use' => (bool) ($updatedWorker->is_in_use ?? false),
+            ],
         ]);
     }
 }

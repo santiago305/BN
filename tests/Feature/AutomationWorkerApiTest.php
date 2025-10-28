@@ -5,23 +5,32 @@ use Illuminate\Support\Facades\Hash;
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
 
-it('returns the list of workers for the automation service', function () {
-    Worker::factory()->count(3)->create();
+it('returns the in use status for a worker by name', function () {
+    $worker = Worker::factory()->create([
+        'name' => 'automation_user',
+        'is_in_use' => true,
+    ]);
 
-    getJson('/api/automation/workers')
-        ->assertOk()
-        ->assertJsonCount(3, 'data');
+    $response = getJson('/api/automation/workers?name=' . $worker->name);
+
+    $response->assertOk();
+
+    expect(json_decode($response->content(), true))->toBeTrue();
 });
 
-it('filters workers by name', function () {
-    $target = Worker::factory()->create(['name' => 'automation_user']);
-    Worker::factory()->create();
+it('returns the in use status for a worker by dni', function () {
+    $worker = Worker::factory()->create([
+        'dni' => '12345678',
+        'is_in_use' => false,
+    ]);
 
-    getJson('/api/automation/workers?name=automation_user')
-        ->assertOk()
-        ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.id', $target->id);
+    $response = getJson('/api/automation/workers?dni=' . $worker->dni);
+
+    $response->assertOk();
+
+    expect(json_decode($response->content(), true))->toBeFalse();
 });
+
 
 it('marks a worker as in use when credentials are valid', function () {
     $worker = Worker::factory()->create([
