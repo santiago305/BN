@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('filters_config', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->string('name');
 
             // Horarios de funcionamiento detallados por día (lunes a domingo)
             // Ejemplo:
