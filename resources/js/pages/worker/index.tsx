@@ -520,11 +520,6 @@ export default function WorkerIndexPage({
                                                 </span>
                                             </div>
                                         </div>
-
-                                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-700 transition group-hover:translate-x-1 dark:text-neutral-200">
-                                            Configurar
-                                            <span aria-hidden="true">→</span>
-                                        </span>
                                     </div>
                                 </button>
                             );
