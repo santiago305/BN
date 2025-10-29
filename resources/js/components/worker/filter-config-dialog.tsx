@@ -45,13 +45,21 @@ export function FilterConfigDialog({
 
     // controlar <dialog/> como modal nativo
     useEffect(() => {
-        if (!dialogRef.current) return;
-        if (open && config) {
-            dialogRef.current.showModal();
-        } else {
-            dialogRef.current.close();
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+
+        try {
+            if (open && config) {
+                if (!dialog.open) {
+                    dialog.showModal();
+                }
+            } else if (dialog.open) {
+                dialog.close();
+            }
+        } catch (error) {
+            console.error('No se pudo controlar la visibilidad del modal de filtro.', error);
         }
-    }, [open, config]);
+    }, [open, config, formState]);
 
     // iniciar form cuando cambie config
     useEffect(() => {
