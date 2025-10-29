@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 
 import AppLayout from '@/layouts/app-layout';
+import { FilterConfigDialog } from '@/components/worker/filter-config-dialog';
 import { WorkerFilterControls } from '@/components/worker/worker-filter-controls';
 import { WorkerStatsCards } from '@/components/worker/worker-stats-cards';
 import { WorkerTable } from '@/components/worker/worker-table';
@@ -10,12 +11,20 @@ import { WorkerCreateDialog } from '@/components/worker/worker-create-dialog';
 import { WorkerEditDialog } from '@/components/worker/worker-edit-dialog';
 import { getCsrfHeaders } from '@/lib/csrf';
 import { type BreadcrumbItem } from '@/types';
-import { type Worker, type WorkerPageProps } from '@/types/worker';
+import {
+    type FilterConfig,
+    type FilterConfigFormInput,
+    type Worker,
+    type WorkerPageProps,
+    type WorkerSidebarEntry,
+} from '@/types/worker';
 
 function isWorkerPageProps(value: unknown): value is WorkerPageProps {
     if (!value || typeof value !== 'object') return false;
     const props = value as Partial<WorkerPageProps>;
     if (!Array.isArray(props.workers)) return false;
+    if (!Array.isArray(props.filterConfigs)) return false;
+    if (!Array.isArray(props.workerOptions)) return false;
     const filters = props.filters;
     if (!filters || typeof filters !== 'object') return false;
     const pagination = props.pagination;
@@ -34,10 +43,14 @@ export default function WorkerIndexPage({
     filters,
     pagination: initialPagination,
     stats: initialStats,
+    filterConfigs: initialFilterConfigs,
+    workerOptions: initialWorkerOptions,
 }: WorkerPageProps) {
     const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
     const [pagination, setPagination] = useState(initialPagination);
     const [stats, setStats] = useState(initialStats);
+    const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>(initialFilterConfigs);
+    const [workerOptions, setWorkerOptions] = useState<WorkerSidebarEntry[]>(initialWorkerOptions);
 
     const [filterActive, setFilterActive] = useState<string>(filters.is_active ?? '');
     const [filterInUse, setFilterInUse] = useState<string>(filters.is_in_use ?? '');
@@ -57,6 +70,58 @@ export default function WorkerIndexPage({
     const [editIsInUse, setEditIsInUse] = useState(false);
 
     const [flashMsg, setFlashMsg] = useState<string>('');
+
+    const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null);
+    const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+    const [isSavingFilter, setIsSavingFilter] = useState(false);
+
+    const selectedFilter = selectedFilterId
+        ? filterConfigs.find((filter) => filter.id === selectedFilterId) ?? null
+        : null;
+
+    const filterColorPalette = [
+        'from-sky-100 via-sky-50 to-white dark:from-sky-900/30 dark:via-sky-900/10 dark:to-neutral-900',
+        'from-emerald-100 via-emerald-50 to-white dark:from-emerald-900/30 dark:via-emerald-900/10 dark:to-neutral-900',
+        'from-amber-100 via-amber-50 to-white dark:from-amber-900/30 dark:via-amber-900/10 dark:to-neutral-900',
+        'from-violet-100 via-violet-50 to-white dark:from-violet-900/30 dark:via-violet-900/10 dark:to-neutral-900',
+    ];
+
+    const formatFilterName = useCallback((name: string) => {
+        if (!name) return '';
+        return name.charAt(0).toUpperCase() + name.slice(1);
+    }, []);
+
+    const reloadFilterConfigs = useCallback(async () => {
+        try {
+            const res = await fetch('/api/filter-configs');
+            if (!res.ok) {
+                return;
+            }
+
+            const data: { data: FilterConfig[]; worker_options?: WorkerSidebarEntry[] } = await res.json();
+            setFilterConfigs(data.data);
+            if (Array.isArray(data.worker_options)) {
+                setWorkerOptions(data.worker_options);
+            }
+
+            if (selectedFilterId && !data.data.some((config) => config.id === selectedFilterId)) {
+                setSelectedFilterId(null);
+                setIsFilterDialogOpen(false);
+            }
+        } catch (error) {
+            console.error('No se pudo actualizar la configuración de filtros.', error);
+        }
+    }, [selectedFilterId]);
+
+    function handleOpenFilterConfig(filterId: string) {
+        setSelectedFilterId(filterId);
+        setIsFilterDialogOpen(true);
+    }
+
+    function handleCloseFilterConfig() {
+        setIsFilterDialogOpen(false);
+        setSelectedFilterId(null);
+    }
 
     const currentPage = pagination.current_page ?? 1;
 
@@ -108,12 +173,62 @@ export default function WorkerIndexPage({
             preserveState: true,
             onSuccess: (page) => {
                 if (isWorkerPageProps(page.props)) {
-                    setWorkers(page.props.workers);
-                    setPagination(page.props.pagination);
-                    setStats(page.props.stats);
+                    const nextProps = page.props as WorkerPageProps;
+                    const nextFilterConfigs = nextProps.filterConfigs;
+
+                    setWorkers(nextProps.workers);
+                    setPagination(nextProps.pagination);
+                    setStats(nextProps.stats);
+                    setFilterConfigs(nextFilterConfigs);
+                    setSelectedFilterId((currentId) =>
+                        currentId
+                            ? (() => {
+                                  const found = nextFilterConfigs.find((config) => config.id === currentId);
+                                  if (!found) {
+                                      setIsFilterDialogOpen(false);
+                                      return null;
+                                  }
+                                  return found.id;
+                                })()
+                            : null
+                    );
+                    // Actualizamos el catálogo de usuarios disponibles por si hubo cambios
+                    setWorkerOptions(nextProps.workerOptions);
                 }
             },
         });
+    }
+
+     async function handleFilterConfigSubmit(values: FilterConfigFormInput) {
+        if (!selectedFilter) return;
+
+        setIsSavingFilter(true);
+        try {
+            const res = await fetch(`/api/filter-configs/${selectedFilter.id}`, {
+                method: 'PATCH',
+                headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(values),
+            });
+
+            if (!res.ok) {
+                setFlashMsg('No se pudo guardar la configuración');
+                return;
+            }
+
+            const data: { data: FilterConfig; worker_options?: WorkerSidebarEntry[] } = await res.json();
+
+            setFilterConfigs((prev) => prev.map((config) => (config.id === data.data.id ? data.data : config)));
+            if (Array.isArray(data.worker_options)) {
+                setWorkerOptions(data.worker_options);
+            }
+            setFlashMsg('Configuración guardada');
+            handleCloseFilterConfig();
+        } catch (error) {
+            console.error('No se pudo actualizar la configuración del filtro.', error);
+            setFlashMsg('No se pudo guardar la configuración');
+        } finally {
+            setIsSavingFilter(false);
+        }
     }
 
     async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
@@ -150,6 +265,8 @@ export default function WorkerIndexPage({
             is_in_use: filterInUse,
             page: pagination.current_page,
         });
+
+        await reloadFilterConfigs();
     }
 
     function openEditModal(worker: Worker) {
@@ -196,6 +313,8 @@ export default function WorkerIndexPage({
             is_in_use: filterInUse,
             page: pagination.current_page,
         });
+
+        await reloadFilterConfigs();
     }
 
     async function handleDeactivate(id: string) {
@@ -215,6 +334,8 @@ export default function WorkerIndexPage({
             is_in_use: filterInUse,
             page: pagination.current_page,
         });
+
+        await reloadFilterConfigs();
     }
 
     async function handleActivate(id: string) {
@@ -235,6 +356,8 @@ export default function WorkerIndexPage({
             is_in_use: filterInUse,
             page: pagination.current_page,
         });
+
+        await reloadFilterConfigs();
     }
 
     async function toggleInUse(worker: Worker) {
@@ -275,9 +398,26 @@ export default function WorkerIndexPage({
             preserveState: true,
             onSuccess: (pageData) => {
                 if (isWorkerPageProps(pageData.props)) {
-                    setWorkers(pageData.props.workers);
-                    setPagination(pageData.props.pagination);
-                    setStats(pageData.props.stats);
+                    const nextProps = pageData.props as WorkerPageProps;
+                    const nextFilterConfigs = nextProps.filterConfigs;
+
+                    setWorkers(nextProps.workers);
+                    setPagination(nextProps.pagination);
+                    setStats(nextProps.stats);
+                    setFilterConfigs(nextFilterConfigs);
+                    setSelectedFilterId((currentId) =>
+                        currentId
+                            ? (() => {
+                                  const found = nextFilterConfigs.find((config) => config.id === currentId);
+                                  if (!found) {
+                                      setIsFilterDialogOpen(false);
+                                      return null;
+                                  }
+                                  return found.id;
+                                })()
+                            : null
+                    );
+                    setWorkerOptions(nextProps.workerOptions);
                 }
             },
         });
@@ -322,6 +462,75 @@ export default function WorkerIndexPage({
 
             <div className="flex flex-1 flex-col gap-6 p-4">
                 <WorkerStatsCards total={stats.total} active={stats.active} inUse={stats.inUse} />
+
+                {filterConfigs.length > 0 && (
+                    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {filterConfigs.map((config, index) => {
+                            const colorClass = filterColorPalette[index % filterColorPalette.length];
+                            const assignedCount = config.worker_ids.length;
+                            return (
+                                <button
+                                    key={config.id}
+                                    type="button"
+                                    onClick={() => handleOpenFilterConfig(config.id)}
+                                    className={`group relative overflow-hidden rounded-2xl border border-neutral-200 bg-linear-to-br p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:border-neutral-700 ${colorClass}`}
+                                >
+                                    <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                                        <div className="absolute inset-0 bg-white/30 dark:bg-neutral-900/20" />
+                                    </div>
+
+                                    <div className="relative z-10 flex h-full flex-col justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500/80 dark:text-neutral-400">
+                                                Filtro
+                                            </p>
+                                            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                                                {formatFilterName(config.name)}
+                                            </h3>
+                                            <p className="truncate text-xs text-neutral-600 dark:text-neutral-300">
+                                                {config.filter_url}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">Captcha</span>
+                                                <span className="uppercase tracking-wide text-neutral-700 dark:text-neutral-200">
+                                                    {config.captcha_type}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">Re-login</span>
+                                                <span className="text-neutral-700 dark:text-neutral-200">
+                                                    Cada {config.relogin_interval} min
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">Usuarios</span>
+                                                <span className="text-neutral-700 dark:text-neutral-200">
+                                                    {assignedCount === 0
+                                                        ? 'Sin asignar'
+                                                        : `${assignedCount} asignado${assignedCount === 1 ? '' : 's'}`}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">Sin resultados</span>
+                                                <span className="text-neutral-700 dark:text-neutral-200">
+                                                    {config.search_without_results ? 'Permitido' : 'No permitido'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-700 transition group-hover:translate-x-1 dark:text-neutral-200">
+                                            Configurar
+                                            <span aria-hidden="true">→</span>
+                                        </span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </section>
+                )}
 
                 <WorkerFilterControls
                     filterActive={filterActive}
@@ -377,6 +586,15 @@ export default function WorkerIndexPage({
                 onIsInUseChange={(value) => setEditIsInUse(value)}
                 onClose={() => setShowEdit(false)}
                 onSubmit={handleEdit}
+            />
+
+            <FilterConfigDialog
+                open={isFilterDialogOpen && selectedFilter != null}
+                config={selectedFilter}
+                workerOptions={workerOptions}
+                loading={isSavingFilter}
+                onClose={handleCloseFilterConfig}
+                onSubmit={handleFilterConfigSubmit}
             />
         </AppLayout>
     );

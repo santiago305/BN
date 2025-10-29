@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\StoreWorkerRequest;
 use App\Http\Requests\UpdateWorkerRequest;
 use App\Http\Requests\UpdateWorkerUsageRequest;
+use App\Models\FilterConfig;
+use App\Models\Worker as WorkerModel;
 use App\Support\WorkerNormalizer;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -34,6 +36,8 @@ class WorkerController extends Controller
                 'is_active' => $request->input('is_active', null),
                 'is_in_use' => $request->input('is_in_use', null),
             ],
+            'filterConfigs' => $this->getFilterConfigsForView(),
+            'workerOptions' => $this->getWorkerOptionsForView()
         ]);
     }
 
@@ -413,5 +417,41 @@ class WorkerController extends Controller
                 'inUse' => $inUseWorkers,
             ],
         ];
+    }
+
+    private function getFilterConfigsForView(): array
+    {
+        $filters = FilterConfig::with(['workers' => function ($query) {
+            $query->select('workers.id', 'workers.name');
+        }])->orderBy('name')->get();
+
+        return $filters->map(function (FilterConfig $config) {
+            return [
+                'id' => $config->id,
+                'name' => $config->name,
+                'working_hours' => $config->working_hours,
+                'captcha_type' => $config->captcha_type,
+                'relogin_interval' => $config->relogin_interval,
+                'filter_url' => $config->filter_url,
+                'search_without_results' => $config->search_without_results,
+                'workers' => $config->workers->map(fn ($worker) => [
+                    'id' => $worker->id,
+                    'name' => $worker->name,
+                ])->values()->all(),
+                'worker_ids' => $config->workers->pluck('id')->values()->all(),
+            ];
+        })->all();
+    }
+
+    private function getWorkerOptionsForView(): array
+    {
+        return WorkerModel::query()
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (WorkerModel $worker) => [
+                'id' => $worker->id,
+                'name' => $worker->name,
+            ])->all();
     }
 }

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\AuthLandingController;
+use App\Http\Controllers\FilterConfigController;
 use App\Http\Controllers\WorkerController;
 
 Route::get('/', AuthLandingController::class)->name('home');
@@ -32,6 +33,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/api/workers/{id}', [WorkerController::class, 'update']);
     Route::delete('/api/workers/{id}', [WorkerController::class, 'destroy']);
     Route::patch('/api/workers/{id}/in-use', [WorkerController::class, 'markInUse']);
+
+    Route::get('/api/filter-configs', [FilterConfigController::class, 'index']);
+    Route::get('/api/filter-configs/{filterConfig}', [FilterConfigController::class, 'show']);
+    Route::patch('/api/filter-configs/{filterConfig}', [FilterConfigController::class, 'update']);
 });
 
 require __DIR__.'/settings.php';

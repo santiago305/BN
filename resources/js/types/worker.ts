@@ -17,6 +17,43 @@ export type WorkerFilters = {
     is_in_use: string | null;
 };
 
+export type FilterWorkingHoursDay = {
+    start: string;
+    end: string;
+};
+
+export type FilterWorkingHours = {
+    monday: FilterWorkingHoursDay;
+    tuesday: FilterWorkingHoursDay;
+    wednesday: FilterWorkingHoursDay;
+    thursday: FilterWorkingHoursDay;
+    friday: FilterWorkingHoursDay;
+    saturday: FilterWorkingHoursDay;
+    sunday: FilterWorkingHoursDay;
+};
+
+export type FilterConfig = {
+    id: string;
+    name: string;
+    working_hours: FilterWorkingHours;
+    captcha_type: 'cloudflare' | 'recaptcha';
+    relogin_interval: number;
+    filter_url: string;
+    search_without_results: boolean;
+    workers: WorkerSidebarEntry[];
+    worker_ids: string[];
+};
+
+export type FilterConfigFormInput = {
+    name: string;
+    working_hours: FilterWorkingHours;
+    captcha_type: 'cloudflare' | 'recaptcha';
+    relogin_interval: number;
+    filter_url: string;
+    search_without_results: boolean;
+    worker_ids: string[];
+};
+
 export type PaginationMeta = {
     total: number;
     per_page: number;
@@ -35,6 +72,8 @@ export type WorkerPageProps = {
     filters: WorkerFilters;
     pagination: PaginationMeta;
     stats: WorkerStats;
+    filterConfigs: FilterConfig[];
+    workerOptions: WorkerSidebarEntry[];
 };
 
 export type WorkerCreateDialogProps = {

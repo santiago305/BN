@@ -36,4 +36,10 @@ class Worker extends Model
     protected $hidden = [
         'password',
     ];
+
+     public function filterConfigs()
+    {
+        return $this->belongsToMany(FilterConfig::class, 'worker_filters', 'worker_id', 'filter_config_id')
+            ->withTimestamps();
+    }
 }
